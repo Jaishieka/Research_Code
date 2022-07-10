@@ -1,0 +1,268 @@
+---
+title: "EDA_New"
+author: "S_16_373"
+date: "7/3/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(ggfortify)
+library(ggplot2)
+library(lubridate)
+library(tidytext)
+library(ggpubr)
+```
+
+**Read the data set and merge**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+
+data_merge <- rbind(Home , Overseas)
+```
+
+**Filter rows that contains batsman, bowler and all rounder data**
+```{r,warning=FALSE,message=FALSE}
+batsman <- data_merge %>% filter(grepl('batsman' , Striker_status))
+bowler <- data_merge %>% filter(grepl('bowler' , Striker_status))
+allRounder <- data_merge %>% filter(grepl('all rounder' , Striker_status))
+```
+
+
+**Filter rows that contains analysing players**
+```{r,warning=FALSE,message=FALSE}
+bat_ana <- batsman %>% filter(grepl('BKG Mendis|LD Chandimal|MDKJ Perera|N Dickwella|WU Tharanga' , Striker))
+all_ana <- allRounder %>% filter(grepl('AD Mathews|DM de Silva|MD Gunathilaka|NLTC Perera' , Striker))
+```
+
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+bat_ana1 <- bat_ana %>% dplyr::select(Match_Number,Venue,Striker,batsman_runs)
+all_ana1 <- all_ana %>% dplyr::select(Match_Number,Venue,Striker,batsman_runs)
+
+```
+
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+bat_ana1 <- bat_ana1 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+
+
+all_ana1 <- all_ana1 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+```
+
+```{r,warning=FALSE,message=FALSE}
+pd = position_dodge(0.85)
+```
+
+**Venue**
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_ana_1 <- bat_ana1 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b_ana1 <- ggplot(bat_ana1,aes(x = reorder(Striker , total_runs), y = total_runs,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=4,colour = "brown4", 
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_ana_1,
+            aes(label = paste0("n = ", Count)), position = pd, size = 4, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90),axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),legend.title = element_text(size = 20),legend.text = element_text(size = 15)) + xlab("Striker")+ylab("Runs Scored") +
+  ggtitle("Runs scored by batsman for different venues") 
+
+b_ana1
+```
+
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"bat_ven_new.eps"),width = 10,height = 7,horizontal = FALSE)
+b_ana1
+dev.off()
+```
+
+
+
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_ana_3 <- all_ana1 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b_ana3 <- ggplot(all_ana1,aes(x = reorder(Striker , total_runs), y = total_runs,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=4,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_ana_3,
+            aes(label = paste0("n = ", Count)), position = pd, size = 4, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90),axis.text = element_text(size = 14),
+        legend.title = element_text(size = 20),axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15)) + xlab("Striker")+ylab("Runs Scored") +
+  ggtitle("Runs scored by allrounders for different venues")
+
+b_ana3
+```
+
+
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"all_ven_new.eps"),width = 10,height = 7,horizontal = FALSE)
+b_ana3
+dev.off()
+```
+
+**Innings**
+**Batsman**
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+bat_ana2 <- bat_ana %>% select(Venue,Match_Number,innings,Striker,batsman_runs)
+all_ana2 <- all_ana %>% select(Venue,Match_Number,innings,Striker,batsman_runs)
+```
+
+
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+bat_ana2 <- bat_ana2 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+all_ana2 <- all_ana2 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+```
+
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_ana_4 <- bat_ana2 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+
+b_ana4 <- ggplot(bat_ana2,aes(x = reorder(Striker , total_runs), y =total_runs,
+                          fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=4,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_ana_4,
+            aes(label = paste0("n = ", Count)), position = pd, size = 4,show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90),axis.text = element_text(size = 14),
+            legend.title = element_text(size = 20),axis.title = element_text(size = 15),
+            legend.text = element_text(size = 15)) + xlab("Striker")+ylab("Runs Scored") +
+      scale_fill_discrete(name = "Innings")
+
+b_ana4
+```
+
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"bat_inn_new.eps"),width = 10,height = 7,horizontal = FALSE)
+b_ana4
+dev.off()
+```
+
+
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_ana_6 <- all_ana2 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b_ana6 <- ggplot(all_ana2,aes(x = Striker , total_runs,
+                             fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=4,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_ana_6,
+            aes(label = paste0("n = ", Count)), position = pd, size = 4, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90),axis.text = element_text(size = 14),
+            legend.title = element_text(size = 20),axis.title = element_text(size = 15),
+            legend.text = element_text(size = 15)) + xlab("Striker")+ylab("Runs Scored") +
+      scale_fill_discrete(name = "Innings")
+
+b_ana6
+```
+
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"all_inn_new.eps"),width = 10,height = 7,horizontal = FALSE)
+b_ana6
+dev.off()
+```
+
+**c) Boxplots for batsman,bowlers and allrounders for different batting positions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+bat_ana3 <- bat_ana %>% select(Venue,Match_Number,innings,Striker,batsman_runs,bat_position)
+all_ana3 <- all_ana %>% select(Venue,Match_Number,innings,Striker,batsman_runs,bat_position)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+bat_ana3 <- bat_ana3 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+all_ana3 <- all_ana3 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+```
+
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_ana_7 <- bat_ana3 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+
+b_ana7 <- ggplot(bat_ana3,aes(x = reorder(Striker , total_runs), y = total_runs,
+                          fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=4,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_ana_7,
+            aes(label = paste0("n = ", Count)), position = pd, size = 4, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90),axis.text = element_text(size = 14),
+            legend.title = element_text(size = 20),axis.title = element_text(size = 15),
+            legend.text = element_text(size = 15)) +xlab("Striker")+ylab("Runs Scored") +
+      scale_fill_discrete(name = "Batting Position")
+
+b_ana7
+```
+
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"bat_pos_new.eps"),width = 10,height = 7,horizontal = FALSE)
+b_ana7
+dev.off()
+```
+
+
+
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_ana_9 <- all_ana3 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b_ana9 <- ggplot(all_ana3,aes(x = Striker , total_runs,fill = as.factor(bat_position)))+
+  geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=4,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_ana_9,
+            aes(label = paste0("n = ", Count)), position = pd, size = 4, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90),axis.text = element_text(size = 14),
+            legend.title = element_text(size = 20),
+            legend.text = element_text(size = 15)) +xlab("Striker")+ylab("Runs Scored") +
+      scale_fill_discrete(name = "Batting Position")
+
+b_ana9
+```
+
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"all_pos_new.eps"),width = 10,height = 7,horizontal = FALSE)
+b_ana9
+dev.off()
+```

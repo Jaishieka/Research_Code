@@ -1,0 +1,200 @@
+---
+title: "WUT_VEN"
+author: "S_16_373"
+date: "5/17/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of WU Tharanga**
+```{r,warning=FALSE,message=FALSE}
+bt15 <- data_merge %>% filter(grepl('WU Tharanga' , Striker))
+```
+\
+\
+***1)Analysis for two different Venue***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+WUT_diff_ven <- survdiff(Surv(cum_balls , wicket) ~ Venue, data = bt15)
+WUT_diff_ven
+```
+The p value is less than 0.05. Therefore we can see a significant difference between the Venue.
+
+\
+\
+**Home**
+\
+\
+**Filter the first Venue**
+```{r,warning=FALSE,message=FALSE}
+WUT_H <- bt15 %>% filter(Venue == "Home")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_WUT_H_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_doubles+cum_boundaries+ ridge(cum_dotBalls), data = WUT_H)
+
+summary(cox_WUT_H_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_WUT_H <- cox.zph(cox_WUT_H_new)
+test_WUT_H
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_WUT_H <- ggadjustedcurves(cox_WUT_H_new , data = WUT_H , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for WU Tharanga for Venue Home") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_WUT_H <- ggforest(cox_WUT_H_new , data = WUT_H,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_WUT_H
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_doubles+cum_boundaries+ ridge(cum_dotBalls), data = WUT_H)
+```
+\
+\
+**Second Venue**
+\
+\
+**Filter the second Venue**
+```{r,warning=FALSE,message=FALSE}
+WUT_O <- bt15 %>% filter(Venue == "Overseas")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_WUT_O_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_doubles+cum_boundaries+ ridge(cum_dotBalls), data = WUT_O)
+
+summary(cox_WUT_O_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_WUT_O <- cox.zph(cox_WUT_O_new)
+test_WUT_O
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_WUT_O <- ggadjustedcurves(cox_WUT_O_new , data = WUT_O , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for WU Tharanga for Venue Overseas") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_WUT_O <- ggforest(cox_WUT_O_new , data = WUT_O,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_WUT_O
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_doubles+cum_boundaries+ ridge(cum_dotBalls), data = WUT_O)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+WUTSurvPlotVen <- ggarrange(cox_plot_WUT_H,cox_plot_WUT_O,ncol = 2)
+WUTSurvPlotVen
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"WUTSurvPlotVen.eps"),width = 10,height = 7,horizontal = FALSE)
+WUTSurvPlotVen
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+WUT_H <- rename(WUT_H, cumulative_doubles = cum_doubles,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+WUT_O <- rename(WUT_O,cumulative_doubles = cum_doubles,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+WUT_pH <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_doubles+cumulative_fours+ ridge(cumulative_dot_balls), data = WUT_H)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of WU Tharanga for home venue")
+
+WUT_pO <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_doubles+cumulative_fours+ ridge(cumulative_dot_balls), data = WUT_O)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of WU Tharanga for overseas venue")
+
+WUTAalenVen <- ggarrange(WUT_pH,WUT_pO, nrow = 2)
+WUTAalenVen
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"WUTAalenVen.eps"),width = 10,height = 7,horizontal = FALSE)
+WUTAalenVen
+dev.off()
+```

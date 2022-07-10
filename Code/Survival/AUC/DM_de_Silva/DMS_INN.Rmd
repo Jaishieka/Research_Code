@@ -1,0 +1,213 @@
+---
+title: "DMS_INN"
+author: "S_16_373"
+date: "5/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of DM de Silva**
+```{r,warning=FALSE,message=FALSE}
+bt <- data_merge %>% filter(grepl('DM de Silva' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+DMS_diff_inn <- survdiff(Surv(cum_balls , wicket) ~ innings, data = bt)
+DMS_diff_inn
+```
+The p value is greater than 0.05. Therefore we cannot see a significant difference between the innings.
+
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+DMS_1 <- bt %>% filter(innings == 1)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+DMS_1_cut <- survSplit(DMS_1 , cut = 27 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DMS_1_cut$hv1 <- DMS_1_cut$cum_boundaries  * (DMS_1_cut$start < 27)
+DMS_1_cut$hv2 <- DMS_1_cut$cum_boundaries  * (DMS_1_cut$start >= 27)
+
+cox_DMS_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                          cum_singles +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = DMS_1_cut)
+
+summary(cox_DMS_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_1 <- cox.zph(cox_DMS_1_heav)
+test_DMS_1
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DMS_1 <- ggadjustedcurves(cox_DMS_1_heav , data = DMS_1_cut , size = 2,
+                      ggtheme = theme_survminer()) + 
+                      geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                      ggtitle("Survival curve for DM de Silva for the first innings") + 
+                      theme(axis.title = element_text(size = 15),
+                            axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_DMS_1 <- ggforest(cox_DMS_1_heav , data = DMS_1_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_DMS_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                          cum_singles +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = DMS_1_cut)
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+DMS_2 <- bt %>% filter(innings == 2)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+DMS_2_cut <- survSplit(DMS_2 , cut = 27 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DMS_2_cut$hv1 <- DMS_2_cut$cum_boundaries  * (DMS_2_cut$start < 27)
+DMS_2_cut$hv2 <- DMS_2_cut$cum_boundaries  * (DMS_2_cut$start >= 27)
+
+cox_DMS_2_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                          cum_singles +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = DMS_2_cut)
+summary(cox_DMS_2_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_2 <- cox.zph(cox_DMS_2_heav)
+test_DMS_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DMS_2 <- ggadjustedcurves(cox_DMS_2_heav , data = DMS_2_cut , size = 2,
+                        ggtheme = theme_survminer()) + 
+                        geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                        ggtitle("Survival curve for DM de Silva for the second innings") + 
+                        theme(axis.title = element_text(size = 15),
+                              axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_DMS_2 <- ggforest(cox_DMS_2_heav , data = DMS_2_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_DMS_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                          cum_singles +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = DMS_2_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+DMSSurvPlotInn <- ggarrange(cox_plot_DMS_1,cox_plot_DMS_2,ncol = 2)
+DMSSurvPlotInn
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"DMSSurvPlotInn.eps"),width = 10,height = 7,horizontal = FALSE)
+DMSSurvPlotInn
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+DMS_1_cut <- rename(DMS_1_cut,cumulative_singles = cum_singles,cumulative_fours_lt27 = hv1, cumulative_fours_ge27 = 
+                      hv2,cumulative_dot_balls=cum_dotBalls)
+DMS_2_cut <- rename(DMS_2_cut,cumulative_singles = cum_singles,cumulative_fours_lt27 = hv1, cumulative_fours_ge27 = 
+                      hv2,cumulative_dot_balls=cum_dotBalls)
+
+DMS_p1 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                          cumulative_singles +cumulative_fours_lt27 + cumulative_fours_ge27 + ridge(cumulative_dot_balls) + 
+                           cluster (id) , data = DMS_1_cut))+ theme(legend.position = "none") + 
+  ggtitle("Aalen plot of DM de Silva for the first innings") 
+
+DMS_p2 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                          cumulative_singles +cumulative_fours_lt27 + cumulative_fours_ge27 + ridge(cumulative_dot_balls) + 
+                           cluster (id) , data = DMS_2_cut))+ theme(legend.position = "none") + 
+  ggtitle("Aalen plot of DM de Silva for the second innings") 
+
+DMSAalenInn <- ggarrange(DMS_p1,DMS_p2, nrow = 2)
+DMSAalenInn
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"DMSAalenInn.eps"),width = 10,height = 7,horizontal = FALSE)
+DMSAalenInn
+dev.off()
+```

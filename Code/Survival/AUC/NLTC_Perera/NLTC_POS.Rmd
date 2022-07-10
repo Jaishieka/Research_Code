@@ -1,0 +1,217 @@
+---
+title: "NLTC_POS"
+author: "S_16_373"
+date: "4/25/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of NLTC Perera**
+```{r,warning=FALSE,message=FALSE}
+bt12 <- data_merge %>% filter(grepl('NLTC Perera' , Striker))
+```
+\
+\
+***1)Analysis for different batting position***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+bt12_ps <- bt12 %>% filter(bat_position == c(7,8))
+
+NLTC_diff_pos <- survdiff(Surv(cum_balls , wicket) ~ bat_position, data = bt12_ps)
+NLTC_diff_pos
+```
+The p value is less than 0.05. Therefore there is a significant difference between the batting positions 7 and 8.
+
+\
+\
+**batting position 7**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+NLTC_P_7<- bt12 %>% filter(bat_position == 7)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+NLTC_P_7_cut <- survSplit(NLTC_P_7 , cut = 20 , end = "cum_balls" , event = "wicket" , 
+                          start = "start" , id = "id")
+
+NLTC_P_7_cut$hv1 <- NLTC_P_7_cut$cum_runs * (NLTC_P_7_cut$start < 20)
+NLTC_P_7_cut$hv2 <- NLTC_P_7_cut$cum_runs * (NLTC_P_7_cut$start >= 20)
+
+
+cox_NLTC_P_7_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                             hv1 +hv2 + cum_boundaries  + ridge(cum_dotBalls) + 
+                             cluster (id) , data = NLTC_P_7_cut)
+
+summary(cox_NLTC_P_7_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_P_7 <- cox.zph(cox_NLTC_P_7_heav)
+test_NLTC_P_7
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_NLTC_P_7 <- ggadjustedcurves(cox_NLTC_P_7_heav , data = NLTC_P_7_cut , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for NLTC Perera for the 7th
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_NLTC_P_7 <- ggforest(cox_NLTC_P_7_heav , data = NLTC_P_7_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_NLTC_P_7
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      hv1 +hv2 + cum_boundaries  + ridge(cum_dotBalls) + cluster (id) , data = NLTC_P_7_cut)
+```
+\
+\
+**8th batting position**
+\
+\
+**Filter the second bat_position**
+```{r,warning=FALSE,message=FALSE}
+NLTC_P_8 <- bt12 %>% filter(bat_position == 8)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+NLTC_P_8_cut <- survSplit(NLTC_P_8 , cut = 20 , end = "cum_balls" , event = "wicket" , 
+                          start = "start" , id = "id")
+
+NLTC_P_8_cut$hv1 <- NLTC_P_8_cut$cum_runs * (NLTC_P_8_cut$start < 20)
+NLTC_P_8_cut$hv2 <- NLTC_P_8_cut$cum_runs * (NLTC_P_8_cut$start >= 20)
+
+
+cox_NLTC_P_8_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                           hv1 + hv2 +  cum_boundaries + ridge(cum_dotBalls) + cluster (id) , 
+                           data = NLTC_P_8_cut)
+summary(cox_NLTC_P_8_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_P_8 <- cox.zph(cox_NLTC_P_8_heav)
+test_NLTC_P_8
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_NLTC_P_8 <- ggadjustedcurves(cox_NLTC_P_8_heav , data = NLTC_P_8_cut , size = 2,ggtheme = 
+                        theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) , 
+                        linetype = "dashed") +ggtitle("Survival curve for NLTC Perera for 
+                        the 8th batting position") + theme(axis.title = element_text(size = 15),
+                        axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_NLTC_P_8 <- ggforest(cox_NLTC_P_8_heav , data = NLTC_P_8_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_NLTC_P_8
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      hv1 + hv2 +  cum_boundaries + ridge(cum_dotBalls) + cluster (id) , data = NLTC_P_8_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+NLTCSurvPlotPos <- ggarrange(cox_plot_NLTC_P_7,cox_plot_NLTC_P_8,ncol = 2)
+NLTCSurvPlotPos
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NLTCSurvPlotPos.eps"),width = 10,height = 7,horizontal = FALSE)
+NLTCSurvPlotPos
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+NLTC_P_7_cut <- rename(NLTC_P_7_cut,cumulative_runs_lt20 = hv1, cumulative_runs_ge20 = hv2 ,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+NLTC_P_8_cut <- rename(NLTC_P_8_cut,cumulative_runs_lt20 = hv1, cumulative_runs_ge20 = hv2 ,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+NLTC_p7 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+      cumulative_runs_lt20 + cumulative_runs_ge20 +  cumulative_fours + ridge(cumulative_dot_balls) + cluster (id) , data = 
+        NLTC_P_7_cut)) + theme(legend.position = "none") + ggtitle("Aalen plot of NLTC Perera for the 7th batting position")
+
+NLTC_p8 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+      cumulative_runs_lt20 + cumulative_runs_ge20 +  cumulative_fours + ridge(cumulative_dot_balls) + cluster (id) , data = 
+        NLTC_P_8_cut)) + theme(legend.position = "none") + ggtitle("Aalen plot of NLTC Perera for the 8th batting position")
+
+NLTCAalenPos <- ggarrange(NLTC_p7,NLTC_p8, nrow = 2)
+NLTCAalenPos
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NLTCAalenPos.eps"),width = 10,height = 7,horizontal = FALSE)
+NLTCAalenPos
+dev.off()
+```
+

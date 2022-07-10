@@ -1,0 +1,216 @@
+---
+title: "NLTC_VEN"
+author: "S_16_373"
+date: "4/25/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of NLTC Perera**
+```{r,warning=FALSE,message=FALSE}
+bt12 <- data_merge %>% filter(grepl('NLTC Perera' , Striker))
+```
+\
+\
+***1)Analysis for two different Venue***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+NLTC_diff_ven <- survdiff(Surv(cum_balls , wicket) ~ Venue, data = bt12)
+NLTC_diff_ven
+```
+The p value is greater than 0.05. Therefore we cannot see a significant difference between the Venue.
+
+\
+\
+**Home**
+\
+\
+**Filter the first Venue**
+```{r,warning=FALSE,message=FALSE}
+NLTC_H <- bt12 %>% filter(Venue == "Home")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+NLTC_H_cut <- survSplit(NLTC_H , cut = 20 , end = "cum_balls" , event = "wicket" , 
+                        start = "start" , id = "id")
+
+NLTC_H_cut$hv1 <- NLTC_H_cut$cum_runs * (NLTC_H_cut$start < 20)
+NLTC_H_cut$hv2 <- NLTC_H_cut$cum_runs * (NLTC_H_cut$start >= 20)
+
+
+cox_NLTC_H_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                           hv1 + hv2 +cum_singles+ridge(cum_dotBalls) + cluster (id) , 
+                         data = NLTC_H_cut)
+
+summary(cox_NLTC_H_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_H <- cox.zph(cox_NLTC_H_heav)
+test_NLTC_H
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_NLTC_H <- ggadjustedcurves(cox_NLTC_H_heav , data = NLTC_H_cut , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for NLTC Perera for Venue Home") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_NLTC_H <- ggforest(cox_NLTC_H_heav , data = NLTC_H_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_NLTC_H
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      hv1 + hv2 +cum_singles+ridge(cum_dotBalls) + cluster (id) , data = NLTC_H_cut)
+```
+\
+\
+**Second Venue**
+\
+\
+**Filter the second Venue**
+```{r,warning=FALSE,message=FALSE}
+NLTC_O <- bt12 %>% filter(Venue == "Overseas")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+NLTC_O_cut <- survSplit(NLTC_O , cut = 20 , end = "cum_balls" , event = "wicket" , 
+                        start = "start" , id = "id")
+
+NLTC_O_cut$hv1 <- NLTC_O_cut$cum_runs * (NLTC_O_cut$start < 20)
+NLTC_O_cut$hv2 <- NLTC_O_cut$cum_runs * (NLTC_O_cut$start >= 20)
+
+
+cox_NLTC_O_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                           hv1 + hv2 +cum_singles+ridge(cum_dotBalls) + cluster (id) , 
+                         data = NLTC_O_cut)
+summary(cox_NLTC_O_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_O <- cox.zph(cox_NLTC_O_heav)
+test_NLTC_O
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_NLTC_O <- ggadjustedcurves(cox_NLTC_O_heav , data = NLTC_O_cut , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for NLTC Perera for Venue Overseas") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_NLTC_O <- ggforest(cox_NLTC_O_heav , data = NLTC_O_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_NLTC_O
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      hv1 + hv2 +cum_singles+ridge(cum_dotBalls) + cluster (id) , data = NLTC_O_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+NLTCSurvPlotVen <- ggarrange(cox_plot_NLTC_H,cox_plot_NLTC_O,ncol = 2)
+NLTCSurvPlotVen
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NLTCSurvPlotVen.eps"),width = 10,height = 7,horizontal = FALSE)
+NLTCSurvPlotVen
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+NLTC_H_cut <- rename(NLTC_H_cut,cumulative_runs_lt20 = hv1, cumulative_runs_ge20 = hv2 ,cumulative_singles = 
+                      cum_singles,cumulative_dot_balls=cum_dotBalls)
+NLTC_O_cut <- rename(NLTC_O_cut,cumulative_runs_lt20 = hv1, cumulative_runs_ge20 = hv2 ,cumulative_singles = 
+                      cum_singles,cumulative_dot_balls=cum_dotBalls)
+
+NLTC_pH <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+      cumulative_runs_lt20 + cumulative_runs_ge20 +cumulative_singles+ridge(cumulative_dot_balls) + cluster (id) , data = 
+        NLTC_H_cut)) + theme(legend.position = "none") + ggtitle("Aalen plot of NLTC Perera for home venue")
+
+NLTC_pO <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+      cumulative_runs_lt20 + cumulative_runs_ge20 +cumulative_singles+ridge(cumulative_dot_balls) + cluster (id) , data = 
+        NLTC_O_cut)) + theme(legend.position = "none") + ggtitle("Aalen plot of NLTC Perera for overseas venue")
+
+NLTCAalenVen <- ggarrange(NLTC_pH,NLTC_pO, nrow = 2)
+NLTCAalenVen
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NLTCAalenVen.eps"),width = 10,height = 7,horizontal = FALSE)
+NLTCAalenVen
+dev.off()
+```

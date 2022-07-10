@@ -1,0 +1,198 @@
+---
+title: "ADM_VEN"
+author: "S_16_373"
+date: "5/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of AD Mathews**
+```{r,warning=FALSE,message=FALSE}
+bt2 <- data_merge %>% filter(grepl('AD Mathews' , Striker))
+```
+\
+\
+***1)Analysis for two different Venue***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+ADM_diff_ven <- survdiff(Surv(cum_balls , wicket) ~ Venue, data = bt2)
+ADM_diff_ven
+```
+The p value is greater than 0.05. Therefore we cannot see a significant difference between the Venue.
+
+\
+\
+**Home**
+\
+\
+**Filter the first Venue**
+```{r,warning=FALSE,message=FALSE}
+ADM_H <- bt2 %>% filter(Venue == "Home")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_H_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs  +cum_boundaries+ ridge(cum_dotBalls), data = ADM_H)
+
+summary(cox_ADM_H_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ADM_H <- cox.zph(cox_ADM_H_new)
+test_ADM_H
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ADM_H <- ggadjustedcurves(cox_ADM_H_new , data = ADM_H , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for AD Mathews for Venue Home") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ADM_H <- ggforest(cox_ADM_H_new , data = ADM_H,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ADM_H
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_runs  +cum_boundaries+ ridge(cum_dotBalls), data = ADM_H)
+```
+\
+\
+**Second Venue**
+\
+\
+**Filter the second Venue**
+```{r,warning=FALSE,message=FALSE}
+ADM_O <- bt2 %>% filter(Venue == "Overseas")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_O_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs  +cum_boundaries+ ridge(cum_dotBalls), data = ADM_O)
+summary(cox_ADM_O_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ADM_O <- cox.zph(cox_ADM_O_new)
+test_ADM_O
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ADM_O <- ggadjustedcurves(cox_ADM_O_new , data = ADM_O , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for AD Mathews for Venue Overseas") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ADM_O <- ggforest(cox_ADM_O_new , data = ADM_O,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ADM_O
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_runs  +cum_boundaries+ ridge(cum_dotBalls), data = ADM_O)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+ADMSurvPlotVen <- ggarrange(cox_plot_ADM_H,cox_plot_ADM_O,ncol = 2)
+ADMSurvPlotVen
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"ADMSurvPlotVen.eps"),width = 10,height = 7,horizontal = FALSE)
+ADMSurvPlotVen
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+ADM_H <- rename(ADM_H, cumulative_runs = cum_runs,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+ADM_O <- rename(ADM_O, cumulative_runs = cum_runs,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+ADM_pH <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_runs  +cumulative_fours+ ridge(cumulative_dot_balls), data = ADM_H)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of AD Mathews for home venue")
+
+ADM_pO <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_runs  +cumulative_fours+ ridge(cumulative_dot_balls), data = ADM_O)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of AD Mathews for overseas venue")
+
+ADMAalenVen <- ggarrange(ADM_pH,ADM_pO, nrow = 2)
+ADMAalenVen
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"ADMAalenVen.eps"),width = 10,height = 7,horizontal = FALSE)
+ADMAalenVen
+dev.off()
+```

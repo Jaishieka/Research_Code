@@ -1,0 +1,256 @@
+---
+title: "DMS"
+author: "S_16_373"
+date: "3/9/2022"
+output: pdf_document
+---
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of DM de Silva**
+```{r,warning=FALSE,message=FALSE}
+bt <- data_merge %>% filter(grepl('DM de Silva' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+DMS_1 <- bt %>% filter(innings == 1)
+```
+\
+\
+**Cox model for first innings**
+```{r,warning=FALSE,message=FALSE}
+cox_DMS_1 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = DMS_1)
+summary(cox_DMS_1)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_DMS_1 <- stepAIC(cox_DMS_1)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_DMS_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_singles +  cum_boundaries+ ridge(cum_dotBalls), data = DMS_1)
+summary(cox_DMS_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_1 <- cox.zph(cox_DMS_1_new)
+test_DMS_1
+```
+\
+\
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+DMS_1_cut <- survSplit(DMS_1 , cut = 27 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DMS_1_cut$hv1 <- DMS_1_cut$cum_boundaries  * (DMS_1_cut$start < 27)
+DMS_1_cut$hv2 <- DMS_1_cut$cum_boundaries  * (DMS_1_cut$start >= 27)
+
+cox_DMS_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                     cum_singles +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = DMS_1_cut)
+summary(cox_DMS_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_1_heav <- cox.zph(cox_DMS_1_heav)
+test_DMS_1_heav
+```
+\
+\
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DMS_1 <- ggadjustedcurves(cox_DMS_1_heav , data = DMS_1_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                    ggtitle("Survival curve for DM de Silva for the first innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_DMS_1
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_DMS_1 <- ggforest(cox_DMS_1_heav , data = DMS_1_cut,fontsize = 1.2)
+coef_plot_DMS_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      cum_singles +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = DMS_1_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_DMS_1 <- unique(DMS_1[c("Match_Number","winning_status")])
+tot_matches_DMS_1 <- nrow(match_status_DMS_1)
+win_matches_DMS_1 <- sum(match_status_DMS_1$winning_status==1)
+
+win_percent_DMS_1 <- (win_matches_DMS_1/tot_matches_DMS_1)*100
+
+win_percent_DMS_1
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_DMS_1 <- data_merge %>% filter(Match_Number %in% unique(DMS_1$Match_Number))
+tot_runs_DMS_1 <- match_played_DMS_1 %>% summarise(sum_runs = sum(tot_runs))
+DMS_runs_1 <- DMS_1 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_DMS_1 <- (DMS_runs_1/tot_runs_DMS_1)*100
+runs_contrib_percent_DMS_1
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+DMS_2 <- bt %>% filter(innings == 2)
+```
+\
+\
+**Cox model for second innings**
+```{r,warning=FALSE,message=FALSE}
+cox_DMS_2 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = DMS_2)
+summary(cox_DMS_2)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_DMS_2 <- stepAIC(cox_DMS_2)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_DMS_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_boundaries+ ridge(cum_dotBalls), data = DMS_2)
+summary(cox_DMS_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_2 <- cox.zph(cox_DMS_2_new)
+test_DMS_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DMS_2 <- ggadjustedcurves(cox_DMS_2_new , data = DMS_2 , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                    ggtitle("Survival curve for DM de Silva for the second innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_DMS_2
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_DMS_2 <- ggforest(cox_DMS_2_new , data = DMS_2,fontsize = 1.2)
+coef_plot_DMS_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+      cum_singles + cum_doubles + cum_boundaries+ ridge(cum_dotBalls), data = DMS_2)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_DMS_2 <- unique(DMS_2[c("Match_Number","winning_status")])
+tot_matches_DMS_2 <- nrow(match_status_DMS_2)
+win_matches_DMS_2 <- sum(match_status_DMS_2$winning_status==1)
+
+win_percent_DMS_2 <- (win_matches_DMS_2/tot_matches_DMS_2)*100
+
+win_percent_DMS_2
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_DMS_2 <- data_merge %>% filter(Match_Number %in% unique(DMS_2$Match_Number))
+tot_runs_DMS_2 <- match_played_DMS_2 %>% summarise(sum_runs = sum(tot_runs))
+DMS_runs_2 <- DMS_2 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_DMS_2 <- (DMS_runs_2/tot_runs_DMS_2)*100
+runs_contrib_percent_DMS_2
+```
+\
+\
+\
+***Compare different innings***
+\
+\
+**Create the data frame**
+```{r,warning=FALSE,message=FALSE}
+PlayerName_DMS <- "DM de Silva"
+Innings <- c(1,2)
+Survival_prob_DMS <- c(0.9606935,0.946015)
+winning_percent_DMS <- c(43.33333,18.75)
+runs_contrib_percent_DMS <- c(10.16244	,11.12124)
+
+comp_innings_DMS <- data.frame(PlayerName_DMS,Innings,Survival_prob_DMS,runs_contrib_percent_DMS,winning_percent_DMS)
+names(comp_innings_DMS) <- c("PlayerName","Innings","Survival_prob","runs_contrib_percent","winning_percent")
+comp_innings_DMS
+```
+\
+\

@@ -1,0 +1,201 @@
+---
+title: "ADM_INN"
+author: "S_16_373"
+date: "5/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of AD Mathews**
+```{r,warning=FALSE,message=FALSE}
+bt2 <- data_merge %>% filter(grepl('AD Mathews' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+ADM_diff_inn <- survdiff(Surv(cum_balls , wicket) ~ innings, data = bt2)
+ADM_diff_inn
+```
+The p value is greater than 0.05. Therefore we cannot see a significant difference between the innings.
+
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+ADM_1 <- bt2 %>% filter(innings == 1)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs +  ridge(cum_dotBalls), data = ADM_1)
+
+summary(cox_ADM_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ADM_1 <- cox.zph(cox_ADM_1_new)
+test_ADM_1
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ADM_1 <- ggadjustedcurves(cox_ADM_1_new , data = ADM_1 , size = 2,
+                      ggtheme = theme_survminer()) + 
+                      geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                      ggtitle("Survival curve for AD Mathews for the first innings") + 
+                      theme(axis.title = element_text(size = 15),
+                            axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ADM_1 <- ggforest(cox_ADM_1_new , data = ADM_1,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ADM_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_runs +  ridge(cum_dotBalls), data = ADM_1)
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+ADM_2 <- bt2 %>% filter(innings == 2)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs +  ridge(cum_dotBalls), data = ADM_2)
+
+summary(cox_ADM_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ADM_2 <- cox.zph(cox_ADM_2_new)
+test_ADM_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ADM_2 <- ggadjustedcurves(cox_ADM_2_new , data = ADM_2 , size = 2,
+                        ggtheme = theme_survminer()) + 
+                        geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                        ggtitle("Survival curve for AD Mathews for the second innings") + 
+                        theme(axis.title = element_text(size = 15),
+                              axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ADM_2 <- ggforest(cox_ADM_2_new , data = ADM_2,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ADM_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_runs +  ridge(cum_dotBalls), data = ADM_2)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+ADMSurvPlotInn <- ggarrange(cox_plot_ADM_1,cox_plot_ADM_2,ncol = 2)
+ADMSurvPlotInn
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"ADMSurvPlotInn.eps"),width = 10,height = 7,horizontal = FALSE)
+ADMSurvPlotInn
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+
+ADM_1 <- rename(ADM_1, cumulative_runs = cum_runs,cumulative_dot_balls=cum_dotBalls)
+ADM_2 <- rename(ADM_2, cumulative_runs = cum_runs,cumulative_dot_balls=cum_dotBalls)
+
+ADM_p1 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_runs +  ridge(cumulative_dot_balls), data = ADM_1)) + theme(legend.position = "none") + 
+  ggtitle("Aalen plot of AD Mathews for first innings") 
+
+ADM_p2 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_runs +  ridge(cumulative_dot_balls), data = ADM_2)) + theme(legend.position = "none") +  
+  ggtitle("Aalen plot of AD Mathews for second innings")
+
+ADMAalenInn <- ggarrange(ADM_p1,ADM_p2, nrow = 2)
+ADMAalenInn
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"ADMAalenInn.eps"),width = 10,height = 7,horizontal = FALSE)
+ADMAalenInn
+dev.off()
+```
+

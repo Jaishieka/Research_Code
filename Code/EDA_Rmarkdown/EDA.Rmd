@@ -1,0 +1,1988 @@
+---
+title: "EDA"
+author: "S/16/373_JAISHIEKA"
+date: "12/18/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(ggfortify)
+library(ggplot2)
+library(lubridate)
+library(tidytext)
+library(ggpubr)
+```
+\
+**Read the data set and merge**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+
+data_merge <- rbind(Home , Overseas)
+
+head(data_merge)
+```
+\
+**Column description**
+\
+\
+***Match_Number*** - Match identification number
+\
+***match_date*** - Date of the match
+\
+***opposition*** - Team played against srilanka
+\
+***winning_status*** - 0 if lost, 1 if won, 2 if tied
+\
+***innings*** - 1 for first innings , 2 for second innings
+\
+***ball_over*** - Overs
+\
+***ball_number*** - Number of balls balled for each match
+\
+***bat_position*** - Batting position of the Striker
+\
+***Striker*** - Name of the batsman who is facing the ball
+\
+***non_striker*** - Nmae of the batsman who is in the opposite end
+\
+***bowler*** - Name of the bowler
+\
+***extra_runs*** - Runs which are not taken by the batsman (Wide,No ball,Free hit,Over throw)
+\
+***batsman_runs*** - Runs scored by the batsman
+\
+***tot_runs*** - Total runs scored for each balls
+\
+***player_out*** - The name of the player got out
+\
+***wicket*** - 0 if the player is not out and 1 if the player is out
+\
+***singles*** - 1 if player scored single, 0 if not
+\
+***doubles*** - 1 if player scored double, 0 if not
+\
+***triples*** - 1 if player scored triples, 0 if not
+\
+***boundaries*** - 1 if player scored boundaries, 0 if not
+\
+***six*** - 1 if the player scored six, 0 if not
+\
+***dotBalls*** - 1 if player faced a dotBalls, 0 if not
+\
+***cum_singles*** - cumulative number of singles 
+\
+***cum_doubles*** - cumulative number of doubles
+\
+***cum_triples*** - cumulative number of triples
+\
+***cum_boundaries*** - cumulative number of boundaries
+\
+***cum_six*** - cumulative number of six
+\
+***cum_dotBalls*** - cumulative number of dotBalls
+\
+***cum_balls*** - cumulative number of balls faced
+\
+***cum_runs*** - cumulative number of runs scored
+\
+***Striker_status*** - Status of the Striker (batsman, bowler, all roounder)
+\
+***Venue*** - Match venue(Home or Overseas)
+\
+\
+**Checking missing values**
+```{r,warning=FALSE,message=FALSE}
+sum(is.na(data_merge))
+```
+\
+**Filter rows that contains batsman, bowler and all rounder data**
+```{r,warning=FALSE,message=FALSE}
+batsman <- data_merge %>% filter(grepl('batsman' , Striker_status))
+bowler <- data_merge %>% filter(grepl('bowler' , Striker_status))
+allRounder <- data_merge %>% filter(grepl('all rounder' , Striker_status))
+```
+\
+**1) Analysing the runs scored by the players**
+\
+\
+**a) Boxplot for batsman,bowlers and allrounders for different venues**
+\
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman1 <- batsman %>% dplyr::select(Match_Number,Venue,Striker,batsman_runs)
+bowler1 <- bowler %>% dplyr::select(Match_Number,Venue,Striker,batsman_runs)
+allRounder1 <- allRounder %>% dplyr::select(Match_Number,Venue,Striker,batsman_runs)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman1 <- batsman1 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+
+bowler1 <- bowler1 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+
+allRounder1 <- allRounder1 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+```
+\
+\
+```{r,warning=FALSE,message=FALSE}
+pd = position_dodge(0.85)
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_1 <- batsman1 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b1 <- ggplot(batsman1,aes(x = reorder(Striker , total_runs), y = total_runs,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4", 
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_1,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90),axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15)) + xlab("Striker")+ylab("Runs Scored") +
+  ggtitle("Runs scored by batsman for different venues") 
+
+b1
+```
+\
+- When we consider the batsman who played 5 or more matches, WIA Fernando has the highest batting average in home ground and MDKJ Perera has the highest batting average in overseas ground.
+\
+\
+DAS Gunaratne has performed better in home ground compared to the overseas where his upper quartile in oerseas is below the lower quartile of home ground.
+\
+\
+BKG Mendis, HDRL Thirimanne, LD Chandimal, N Dickwella and WIA Fernando has performed better in home ground compared to overseas.
+\
+\
+WU Tharanga, FDM Karunaratne and MDKJ Perera has performed better in overseas compared to home ground.
+\
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_2 <- bowler1 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+
+b2 <- ggplot(bowler1,aes(x = reorder(Striker , total_runs), y = total_runs,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_2,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")+
+  ggtitle("Runs scored by bowlers for different venues")
+
+b2
+```
+\
+PVD Chameera has the highest batting average in home ground and C Karunaratne has the highest average in overseas ground.
+\
+\
+KMDN Kulasekara has a better batting average in overseas ground compared to home where the highest runs scored in home ground is very low than the minimum runs scored in overseas ground.
+\
+\
+CBRLS Kumara, MVT Fernando and PVD Chameera has better performance in home ground compared to overseas whereas PADLR Sandakan, SL Malinga and RAS Lakmal has better performance in overseas compared to home ground.
+\
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_3 <- allRounder1 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b3 <- ggplot(allRounder1,aes(x = reorder(Striker , total_runs), y = total_runs,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_3,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored") +
+  ggtitle("Runs scored by allrounders for different venues")
+
+b3
+```
+\
+AD Mathews and MD Gunathilaka has the highest batting average for home and overseas ground where both the players has better performance in overseas compared to home ground.
+\
+\
+SS Pathirana has a better performance in home compared to overseas where his scores in home are greater than the median score in overseas.
+\
+\
+PWH de Silva has a better performance in overseas compared to home where his upper quartile in home is less than the median score of overseas.
+\
+\
+TAM Siriwardana has a better performance in home compared to overseas where his scores in home are greater than the upper quartile of overseas.
+\
+\
+S Prasanna has a better performance in overseas ground but his batting average is above the upper quartile which is highly affected by the outliers.
+\
+\
+A Dananjaya has almost equal batting average in both venues but his variation is less in home ground and also average is affected by the outliers.
+\
+\
+NLTC Perera, DM de Silva and MD Shanaka has performed better in home ground whereas  I Udana and GSNFG Jayasuriya performed well in overseas grounds.
+\
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge1 <- data_merge %>% group_by(Venue,Match_Number , Striker_status) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+
+box1 <- ggplot(datamerge1,aes(x = Striker_status , y = total_runs,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+  ggtitle("Comparing the runs scored by all three categories for different venues")
+box1
+```
+\
+Batsman group has better performance for both the venues with almost equal variation and few outliers and bowler group has the lower performance in both the venues.
+\
+\
+All rounders has an average performance in both venues where the variation is lower in home ground compared to overseas ground.
+\
+\
+\
+**b) Boxplots for batsman,bowlers and allrounders for different innings**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman2 <- batsman %>% select(Venue,Match_Number,innings,Striker,batsman_runs)
+bowler2 <- bowler %>% select(Venue,Match_Number,innings,Striker,batsman_runs)
+allRounder2 <- allRounder %>% select(Venue,Match_Number,innings,Striker,batsman_runs)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman2 <- batsman2 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+bowler2 <- bowler2 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+allRounder2 <- allRounder2 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_4 <- batsman2 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+
+b4 <- ggplot(batsman2,aes(x = reorder(Striker , total_runs), y =total_runs,
+                          fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_4,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3,show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b4
+```
+\
+- MDKJ Perera and Dickwella has the highest batting average in the first innings but the range of Perera is lower compared to Dickwella.   FDM Karunaratne has the highest batting average in the second innings.
+\
+\
+- FDM Karunaratne has performed well in the second innings compared to the first innings where in his first innings, the average is less   than the median runs scored and the lower quartile score of the second innings.
+\
+\
+- LD Chandimal has a better performance in the first innings compared to the second innings with almost equal median in both the          innings.  But his average in the second innings is less than the median score.
+\
+\
+- HDRL Thirimanne has performed well in the first innings compared to the second innings and also all his runs scored in the second       innings is below the lower quartile of the first innings except the outlier.
+\
+\
+- WIA Fernando has almost equal average runs with higher median and range in the second innings and he has two outliers in the first      innings.
+\
+\
+- BKG Mendis has a better average in first innings with a higher range and his upper quartile in the second innings is almost equal to    the median in the first innings.
+\
+\
+- WU Tharanga and DAS Gunaratne has a better performance in the second innings compared to the first innings where Tharanga has two       outliers in the second innings and one outlier in the first innings and Gunaratne has one outlier in the second innings.
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_5 <- bowler2 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b5 <- ggplot(bowler2,aes(x = reorder(Striker , total_runs), y = total_runs,
+                         fill =as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_5,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b5
+```
+\
+- C Karunaratne has the highest batting average in  the first innings but he has not batted in the first innings.
+\
+\
+- JDF Vandersay has the highest average in the second innings where all his runs scored in the first innings is less than the lower       quartile of the second innings.
+\
+\
+- KMDN Kulasekara has performed better in the second innings compared to the first innings where his upper quartile in the first innings   is less than the lower quartile in the second innings.
+\
+\
+- 
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_6 <- allRounder2 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b6 <- ggplot(allRounder2,aes(x = Striker , total_runs,
+                             fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_6,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b6
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge2 <- data_merge %>% group_by(innings,Match_Number , Striker_status) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+
+box2 <- ggplot(datamerge2,aes(x = Striker_status , y = total_runs,
+                              fill = as.factor(innings)))+ geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box2
+```
+\
+\
+**c) Boxplots for batsman,bowlers and allrounders for different batting positions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman3 <- batsman %>% select(Venue,Match_Number,innings,Striker,batsman_runs,bat_position)
+bowler3 <- bowler %>% select(Venue,Match_Number,innings,Striker,batsman_runs,bat_position)
+allRounder3 <- allRounder %>% select(Venue,Match_Number,innings,Striker,batsman_runs,bat_position)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman3 <- batsman3 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+bowler3 <- bowler3 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+allRounder3 <- allRounder3 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_7 <- batsman3 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+
+b7 <- ggplot(batsman3,aes(x = reorder(Striker , total_runs), y = total_runs,
+                          fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_7,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b7
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_8 <- bowler3 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b8 <- ggplot(bowler3,aes(x = reorder(Striker , total_runs), y = total_runs,
+                         fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_8,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b8
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_9 <- allRounder3 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b9 <- ggplot(allRounder3,aes(x = Striker , total_runs,fill = as.factor(bat_position)))+
+  geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_9,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b9
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge3 <- data_merge %>% group_by(bat_position,Match_Number , Striker_status) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+
+box3 <- ggplot(datamerge3,aes(x = Striker_status , y = total_runs,
+                              fill = as.factor(bat_position))) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box3
+```
+\
+\
+**d) Boxplots for batsman,bowlers and allrounders for different oppositions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman4 <- batsman %>% select(Venue,Match_Number,innings,Striker,batsman_runs,opposition)
+bowler4 <- bowler %>% select(Venue,Match_Number,innings,Striker,batsman_runs,opposition)
+allRounder4 <- allRounder %>% select(Venue,Match_Number,innings,Striker,batsman_runs,opposition)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman4 <- batsman4 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+bowler4 <- bowler4 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+
+allRounder4 <- allRounder4 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_runs = sum(batsman_runs, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_10 <- batsman4 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+
+b10 <- ggplot(batsman4,aes(x = reorder(Striker , total_runs), y = total_runs,
+                           fill = opposition)) + geom_boxplot() +
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_10,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b10
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_11 <- bowler4 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b11 <- ggplot(bowler4,aes(x = reorder(Striker , total_runs), y = total_runs,
+                          fill = opposition)) + geom_boxplot() + 
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_11,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b11
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.height=11,fig.width=14}
+match_num_12 <- allRounder4 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_runs=max(total_runs)+0.05*diff(range(total_runs)))
+
+b12 <- ggplot(allRounder4,aes(x = Striker , total_runs,fill = opposition)) +
+  geom_boxplot() + facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                   colour = "brown4", position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_12,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b12
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+datamerge4 <- data_merge %>% group_by(opposition,Match_Number , Striker_status) %>%
+  summarise(total_runs = sum(batsman_runs , na.rm = TRUE))
+
+box4 <- ggplot(datamerge4,aes(x = Striker_status , y = total_runs,
+                              fill = opposition)) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                     colour = "brown4", position = pd, show.legend = FALSE)
+box4
+```
+\
+\
+**2) Analysing the singles scored by the players**
+\
+\
+**a) Boxplot for batsman,bowlers and allrounders for different venues**
+\
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman5 <- batsman %>% select(Match_Number,Venue,Striker,singles)
+bowler5 <- bowler %>% select(Match_Number,Venue,Striker,singles)
+allRounder5 <- allRounder %>% select(Match_Number,Venue,Striker,singles)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman5 <- batsman5 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_singles = sum(singles , na.rm = TRUE))
+
+bowler5 <- bowler5 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_singles = sum(singles , na.rm = TRUE))
+
+allRounder5 <- allRounder5 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_singles = sum(singles , na.rm = TRUE))
+```
+\
+\
+```{r,warning=FALSE,message=FALSE}
+pd = position_dodge(0.85)
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_13 <- batsman5 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b13 <- ggplot(batsman5,aes(x = reorder(Striker , total_singles), y = total_singles,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4", 
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_13,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b13
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_14 <- bowler5 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+
+b14 <- ggplot(bowler5,aes(x = reorder(Striker , total_singles), y = total_singles,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_14,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b14
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_15 <- allRounder5 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b15 <- ggplot(allRounder5,aes(x = reorder(Striker , total_singles), y = total_singles,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_15,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b15
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge5 <- data_merge %>% group_by(Venue,Match_Number , Striker_status) %>%
+  summarise(total_singles = sum(singles , na.rm = TRUE))
+
+box5 <- ggplot(datamerge5,aes(x = Striker_status , y = total_singles,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE)
+box5
+```
+\
+\
+**b) Boxplots for batsman,bowlers and allrounders for different innings**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman6 <- batsman %>% select(Venue,Match_Number,innings,Striker,singles)
+bowler6 <- bowler %>% select(Venue,Match_Number,innings,Striker,singles)
+allRounder6 <- allRounder %>% select(Venue,Match_Number,innings,Striker,singles)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman6 <- batsman6 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+
+bowler6 <- bowler6 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+
+allRounder6 <- allRounder6 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_16 <- batsman6 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+
+b16 <- ggplot(batsman6,aes(x = reorder(Striker , total_singles), y =total_singles,
+                          fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_16,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3,show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b16
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_17 <- bowler6 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b17 <- ggplot(bowler6,aes(x = reorder(Striker , total_singles), y = total_singles,
+                         fill =as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_17,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b17
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_18 <- allRounder6 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b18 <- ggplot(allRounder6,aes(x = Striker , total_singles,
+                             fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_18,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b18
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge6 <- data_merge %>% group_by(innings,Match_Number , Striker_status) %>%
+  summarise(total_singles = sum(singles , na.rm = TRUE))
+
+box6 <- ggplot(datamerge6,aes(x = Striker_status , y = total_singles,
+                              fill = as.factor(innings)))+ geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box6
+```
+\
+\
+**c) Boxplots for batsman,bowlers and allrounders for different batting positions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman7 <- batsman %>% select(Venue,Match_Number,innings,Striker,singles,bat_position)
+bowler7 <- bowler %>% select(Venue,Match_Number,innings,Striker,singles,bat_position)
+allRounder7 <- allRounder %>% select(Venue,Match_Number,innings,Striker,singles,bat_position)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman7 <- batsman7 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+
+bowler7 <- bowler7 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+
+allRounder7 <- allRounder7 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_19 <- batsman7 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+
+b19 <- ggplot(batsman7,aes(x = reorder(Striker , total_singles), y = total_singles,
+                          fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_19,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b19
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_20 <- bowler7 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b20 <- ggplot(bowler7,aes(x = reorder(Striker , total_singles), y = total_singles,
+                         fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_20,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b20
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_21 <- allRounder7 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b21 <- ggplot(allRounder7,aes(x = Striker , total_singles,fill = as.factor(bat_position)))+
+  geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_21,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b21
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge7 <- data_merge %>% group_by(bat_position,Match_Number , Striker_status) %>%
+  summarise(total_singles = sum(singles , na.rm = TRUE))
+
+box7 <- ggplot(datamerge7,aes(x = Striker_status , y = total_singles,
+                              fill = as.factor(bat_position))) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box7
+```
+\
+\
+**d) Boxplots for batsman,bowlers and allrounders for different oppositions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman8 <- batsman %>% select(Venue,Match_Number,innings,Striker,singles,opposition)
+bowler8 <- bowler %>% select(Venue,Match_Number,innings,Striker,singles,opposition)
+allRounder8 <- allRounder %>% select(Venue,Match_Number,innings,Striker,singles,opposition)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman8 <- batsman8 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+
+bowler8 <- bowler8 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+
+allRounder8 <- allRounder8 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_singles = sum(singles, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_22 <- batsman8 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+
+b22 <- ggplot(batsman8,aes(x = reorder(Striker , total_singles), y = total_singles,
+                           fill = opposition)) + geom_boxplot() +
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_22,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b22
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_23 <- bowler8 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b23 <- ggplot(bowler8,aes(x = reorder(Striker , total_singles), y = total_singles,
+                          fill = opposition)) + geom_boxplot() + 
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_23,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b23
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.height=11,fig.width=14}
+match_num_24 <- allRounder8 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_singles=max(total_singles)+0.05*diff(range(total_singles)))
+
+b24 <- ggplot(allRounder8,aes(x = Striker , total_singles,fill = opposition)) +
+  geom_boxplot() + facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                   colour = "brown4", position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_24,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b24
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+datamerge8 <- data_merge %>% group_by(opposition,Match_Number , Striker_status) %>%
+  summarise(total_singles = sum(singles , na.rm = TRUE))
+
+box8 <- ggplot(datamerge8,aes(x = Striker_status , y = total_singles,
+                              fill = opposition)) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                     colour = "brown4", position = pd, show.legend = FALSE)
+box8
+```
+\
+\
+**3) Analysing the doubles scored by the players**
+\
+\
+**a) Boxplot for batsman,bowlers and allrounders for different venues**
+\
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman9 <- batsman %>% select(Match_Number,Venue,Striker,doubles)
+bowler9 <- bowler %>% select(Match_Number,Venue,Striker,doubles)
+allRounder9 <- allRounder %>% select(Match_Number,Venue,Striker,doubles)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman9 <- batsman9 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_doubles = sum(doubles , na.rm = TRUE))
+
+bowler9 <- bowler9 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_doubles = sum(doubles , na.rm = TRUE))
+
+allRounder9 <- allRounder9 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_doubles = sum(doubles , na.rm = TRUE))
+```
+\
+\
+```{r,warning=FALSE,message=FALSE}
+pd = position_dodge(0.85)
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_25 <- batsman9 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b25 <- ggplot(batsman9,aes(x = reorder(Striker , total_doubles), y = total_doubles,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4", 
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_25,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b25
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_26 <- bowler9 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+
+b26 <- ggplot(bowler9,aes(x = reorder(Striker , total_doubles), y = total_doubles,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_26,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b26
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_27 <- allRounder9 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b27 <- ggplot(allRounder9,aes(x = reorder(Striker , total_doubles), y = total_doubles,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_27,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b27
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge9 <- data_merge %>% group_by(Venue,Match_Number , Striker_status) %>%
+  summarise(total_doubles = sum(doubles , na.rm = TRUE))
+
+box9 <- ggplot(datamerge9,aes(x = Striker_status , y = total_doubles,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE)
+box9
+```
+\
+\
+**b) Boxplots for batsman,bowlers and allrounders for different innings**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman10 <- batsman %>% select(Venue,Match_Number,innings,Striker,doubles)
+bowler10 <- bowler %>% select(Venue,Match_Number,innings,Striker,doubles)
+allRounder10 <- allRounder %>% select(Venue,Match_Number,innings,Striker,doubles)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman10 <- batsman10 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+
+bowler10 <- bowler10 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+
+allRounder10 <- allRounder10 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_28 <- batsman10 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+
+b28 <- ggplot(batsman10,aes(x = reorder(Striker , total_doubles), y =total_doubles,
+                          fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_28,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3,show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b28
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_29 <- bowler10 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b29 <- ggplot(bowler10,aes(x = reorder(Striker , total_doubles), y = total_doubles,
+                         fill =as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_29,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b29
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_30 <- allRounder10 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b30 <- ggplot(allRounder10,aes(x = Striker , total_doubles,
+                             fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_30,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b30
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge10 <- data_merge %>% group_by(innings,Match_Number , Striker_status) %>%
+  summarise(total_doubles = sum(doubles , na.rm = TRUE))
+
+box10 <- ggplot(datamerge10,aes(x = Striker_status , y = total_doubles,
+                              fill = as.factor(innings)))+ geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box10
+```
+\
+\
+**c) Boxplots for batsman,bowlers and allrounders for different batting positions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman11 <- batsman %>% select(Venue,Match_Number,innings,Striker,doubles,bat_position)
+bowler11 <- bowler %>% select(Venue,Match_Number,innings,Striker,doubles,bat_position)
+allRounder11 <- allRounder %>% select(Venue,Match_Number,innings,Striker,doubles,bat_position)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman11 <- batsman11 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+
+bowler11 <- bowler11 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+
+allRounder11 <- allRounder11 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_31 <- batsman11 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+
+b31 <- ggplot(batsman11,aes(x = reorder(Striker , total_doubles), y = total_doubles,
+                          fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_31,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b31
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_32 <- bowler11 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b32 <- ggplot(bowler11,aes(x = reorder(Striker , total_doubles), y = total_doubles,
+                         fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_32,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b32
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_33 <- allRounder11 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b33 <- ggplot(allRounder11,aes(x = Striker , total_doubles,fill = as.factor(bat_position)))+
+  geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_33,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b33
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge11 <- data_merge %>% group_by(bat_position,Match_Number , Striker_status) %>%
+  summarise(total_doubles = sum(doubles , na.rm = TRUE))
+
+box11 <- ggplot(datamerge11,aes(x = Striker_status , y = total_doubles,
+                              fill = as.factor(bat_position))) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box11
+```
+\
+\
+**d) Boxplots for batsman,bowlers and allrounders for different oppositions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman12 <- batsman %>% select(Venue,Match_Number,innings,Striker,doubles,opposition)
+bowler12 <- bowler %>% select(Venue,Match_Number,innings,Striker,doubles,opposition)
+allRounder12 <- allRounder %>% select(Venue,Match_Number,innings,Striker,doubles,opposition)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman12 <- batsman12 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+
+bowler12 <- bowler12 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+
+allRounder12 <- allRounder12 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_doubles = sum(doubles, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_34 <- batsman12 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+
+b34 <- ggplot(batsman12,aes(x = reorder(Striker , total_doubles), y = total_doubles,
+                           fill = opposition)) + geom_boxplot() +
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_34,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b34
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_35 <- bowler12 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b35 <- ggplot(bowler12,aes(x = reorder(Striker , total_doubles), y = total_doubles,
+                          fill = opposition)) + geom_boxplot() + 
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_35,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b35
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.height=11,fig.width=14}
+match_num_36 <- allRounder12 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_doubles=max(total_doubles)+0.05*diff(range(total_doubles)))
+
+b36 <- ggplot(allRounder12,aes(x = Striker , total_doubles,fill = opposition)) +
+  geom_boxplot() + facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                   colour = "brown4", position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_36,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b36
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+datamerge12 <- data_merge %>% group_by(opposition,Match_Number , Striker_status) %>%
+  summarise(total_doubles = sum(doubles , na.rm = TRUE))
+
+box12 <- ggplot(datamerge12,aes(x = Striker_status , y = total_doubles,
+                              fill = opposition)) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                     colour = "brown4", position = pd, show.legend = FALSE)
+box12
+```
+\
+\
+**4) Analysing the boundaries scored by the players**
+\
+\
+**a) Boxplot for batsman,bowlers and allrounders for different venues**
+\
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman13 <- batsman %>% select(Match_Number,Venue,Striker,boundaries)
+bowler13 <- bowler %>% select(Match_Number,Venue,Striker,boundaries)
+allRounder13 <- allRounder %>% select(Match_Number,Venue,Striker,boundaries)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman13 <- batsman13 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_boundaries = sum(boundaries , na.rm = TRUE))
+
+bowler13 <- bowler13 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_boundaries = sum(boundaries , na.rm = TRUE))
+
+allRounder13 <- allRounder13 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_boundaries = sum(boundaries , na.rm = TRUE))
+```
+\
+\
+```{r,warning=FALSE,message=FALSE}
+pd = position_dodge(0.85)
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_37 <- batsman13 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b37 <- ggplot(batsman13,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4", 
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_37,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b37
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_38 <- bowler13 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+
+b38 <- ggplot(bowler13,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_38,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b38
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_39 <- allRounder13 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b39 <- ggplot(allRounder13,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_39,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b39
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge13 <- data_merge %>% group_by(Venue,Match_Number , Striker_status) %>%
+  summarise(total_boundaries = sum(boundaries , na.rm = TRUE))
+
+box13 <- ggplot(datamerge13,aes(x = Striker_status , y = total_boundaries,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE)
+box13
+```
+\
+\
+**b) Boxplots for batsman,bowlers and allrounders for different innings**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman14 <- batsman %>% select(Venue,Match_Number,innings,Striker,boundaries)
+bowler14 <- bowler %>% select(Venue,Match_Number,innings,Striker,boundaries)
+allRounder14 <- allRounder %>% select(Venue,Match_Number,innings,Striker,boundaries)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman14 <- batsman14 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+
+bowler14 <- bowler14 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+
+allRounder14 <- allRounder14 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_40 <- batsman14 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+
+b40 <- ggplot(batsman14,aes(x = reorder(Striker , total_boundaries), y =total_boundaries,
+                          fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_40,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3,show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b40
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_41 <- bowler14 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b41 <- ggplot(bowler14,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,
+                         fill =as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_41,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b41
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_42 <- allRounder14 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b42 <- ggplot(allRounder14,aes(x = Striker , total_boundaries,
+                             fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_42,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b42
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge14 <- data_merge %>% group_by(innings,Match_Number , Striker_status) %>%
+  summarise(total_boundaries = sum(boundaries , na.rm = TRUE))
+
+box14 <- ggplot(datamerge14,aes(x = Striker_status , y = total_boundaries,
+                              fill = as.factor(innings)))+ geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box14
+```
+\
+\
+**c) Boxplots for batsman,bowlers and allrounders for different batting positions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman15 <- batsman %>% select(Venue,Match_Number,innings,Striker,boundaries,bat_position)
+bowler15 <- bowler %>% select(Venue,Match_Number,innings,Striker,boundaries,bat_position)
+allRounder15 <- allRounder %>% select(Venue,Match_Number,innings,Striker,boundaries,bat_position)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman15 <- batsman15 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+
+bowler15 <- bowler15 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+
+allRounder15 <- allRounder15 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_43 <- batsman15 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+
+b43 <- ggplot(batsman15,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,
+                          fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_43,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b43
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_44 <- bowler15 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b44 <- ggplot(bowler15,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,
+                         fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_44,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b44
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_45 <- allRounder15 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b45 <- ggplot(allRounder15,aes(x = Striker , total_boundaries,fill = as.factor(bat_position)))+
+  geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_45,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b45
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge15 <- data_merge %>% group_by(bat_position,Match_Number , Striker_status) %>%
+  summarise(total_boundaries = sum(boundaries , na.rm = TRUE))
+
+box15 <- ggplot(datamerge15,aes(x = Striker_status , y = total_boundaries,
+                              fill = as.factor(bat_position))) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box15
+```
+\
+\
+**d) Boxplots for batsman,bowlers and allrounders for different oppositions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman16 <- batsman %>% select(Venue,Match_Number,innings,Striker,boundaries,opposition)
+bowler16 <- bowler %>% select(Venue,Match_Number,innings,Striker,boundaries,opposition)
+allRounder16 <- allRounder %>% select(Venue,Match_Number,innings,Striker,boundaries,opposition)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman16 <- batsman16 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+
+bowler16 <- bowler16 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+
+allRounder16 <- allRounder16 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_boundaries = sum(boundaries, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_46 <- batsman16 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+
+b46 <- ggplot(batsman16,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,
+                           fill = opposition)) + geom_boxplot() +
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_46,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b46
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_47 <- bowler16 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b47 <- ggplot(bowler16,aes(x = reorder(Striker , total_boundaries), y = total_boundaries,
+                          fill = opposition)) + geom_boxplot() + 
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_47,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b47
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.height=11,fig.width=14}
+match_num_48 <- allRounder16 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_boundaries=max(total_boundaries)+0.05*diff(range(total_boundaries)))
+
+b48 <- ggplot(allRounder16,aes(x = Striker , total_boundaries,fill = opposition)) +
+  geom_boxplot() + facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                   colour = "brown4", position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_48,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b48
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+datamerge16 <- data_merge %>% group_by(opposition,Match_Number , Striker_status) %>%
+  summarise(total_boundaries = sum(boundaries , na.rm = TRUE))
+
+box16 <- ggplot(datamerge16,aes(x = Striker_status , y = total_boundaries,
+                              fill = opposition)) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                     colour = "brown4", position = pd, show.legend = FALSE)
+box16
+```
+\
+\
+**5) Analysing the dotBalls scored by the players**
+\
+\
+**a) Boxplot for batsman,bowlers and allrounders for different venues**
+\
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman17 <- batsman %>% select(Match_Number,Venue,Striker,dotBalls)
+bowler17 <- bowler %>% select(Match_Number,Venue,Striker,dotBalls)
+allRounder17 <- allRounder %>% select(Match_Number,Venue,Striker,dotBalls)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman17 <- batsman17 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_dotBalls = sum(dotBalls , na.rm = TRUE))
+
+bowler17 <- bowler17 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_dotBalls = sum(dotBalls , na.rm = TRUE))
+
+allRounder17 <- allRounder17 %>% group_by(Venue,Match_Number , Striker) %>%
+  summarise(total_dotBalls = sum(dotBalls , na.rm = TRUE))
+```
+\
+\
+```{r,warning=FALSE,message=FALSE}
+pd = position_dodge(0.85)
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_49 <- batsman17 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b49 <- ggplot(batsman17,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4", 
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_49,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b49
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_50 <- bowler17 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+
+b50 <- ggplot(bowler17,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,fill = Venue)) + 
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_50,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b50
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_51 <- allRounder17 %>% group_by(Venue,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b51 <- ggplot(allRounder17,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE) +
+        geom_text(data = match_num_51,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+  theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b51
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge17 <- data_merge %>% group_by(Venue,Match_Number , Striker_status) %>%
+  summarise(total_dotBalls = sum(dotBalls , na.rm = TRUE))
+
+box17 <- ggplot(datamerge17,aes(x = Striker_status , y = total_dotBalls,fill = Venue))+
+  geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                     position = pd, show.legend = FALSE)
+box17
+```
+\
+\
+**b) Boxplots for batsman,bowlers and allrounders for different innings**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman18 <- batsman %>% select(Venue,Match_Number,innings,Striker,dotBalls)
+bowler18 <- bowler %>% select(Venue,Match_Number,innings,Striker,dotBalls)
+allRounder18 <- allRounder %>% select(Venue,Match_Number,innings,Striker,dotBalls)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman18 <- batsman18 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+
+bowler18 <- bowler18 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+
+allRounder18 <- allRounder18 %>% group_by(Venue,innings,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_52 <- batsman18 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+
+b52 <- ggplot(batsman18,aes(x = reorder(Striker , total_dotBalls), y =total_dotBalls,
+                          fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_52,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3,show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b52
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_53 <- bowler18 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b53 <- ggplot(bowler18,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,
+                         fill =as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_53,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b53
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=10}
+match_num_54 <- allRounder18 %>% group_by(innings,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b54 <- ggplot(allRounder18,aes(x = Striker , total_dotBalls,
+                             fill = as.factor(innings)))+ geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_54,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) + xlab("Striker")+ylab("Runs Scored")
+
+b54
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge18 <- data_merge %>% group_by(innings,Match_Number , Striker_status) %>%
+  summarise(total_dotBalls = sum(dotBalls , na.rm = TRUE))
+
+box18 <- ggplot(datamerge18,aes(x = Striker_status , y = total_dotBalls,
+                              fill = as.factor(innings)))+ geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box18
+```
+\
+\
+**c) Boxplots for batsman,bowlers and allrounders for different batting positions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman19 <- batsman %>% select(Venue,Match_Number,innings,Striker,dotBalls,bat_position)
+bowler19 <- bowler %>% select(Venue,Match_Number,innings,Striker,dotBalls,bat_position)
+allRounder19 <- allRounder %>% select(Venue,Match_Number,innings,Striker,dotBalls,bat_position)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman19 <- batsman19 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+
+bowler19 <- bowler19 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+
+allRounder19 <- allRounder19 %>% group_by(Venue,innings,bat_position,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_55 <- batsman19 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+
+b55 <- ggplot(batsman19,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,
+                          fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_55,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b55
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+match_num_56 <- bowler19 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b56 <- ggplot(bowler19,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,
+                         fill = as.factor(bat_position))) + geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_56,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b56
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.width=12}
+match_num_57 <- allRounder19 %>% group_by(bat_position,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b57 <- ggplot(allRounder19,aes(x = Striker , total_dotBalls,fill = as.factor(bat_position)))+
+  geom_boxplot() + 
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_57,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b57
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE}
+datamerge19 <- data_merge %>% group_by(bat_position,Match_Number , Striker_status) %>%
+  summarise(total_dotBalls = sum(dotBalls , na.rm = TRUE))
+
+box19 <- ggplot(datamerge19,aes(x = Striker_status , y = total_dotBalls,
+                              fill = as.factor(bat_position))) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                     position = pd, show.legend = FALSE)
+box19
+```
+\
+\
+**d) Boxplots for batsman,bowlers and allrounders for different oppositions**
+\
+**Select only specific columns**
+```{r,warning=FALSE,message=FALSE}
+batsman20 <- batsman %>% select(Venue,Match_Number,innings,Striker,dotBalls,opposition)
+bowler20 <- bowler %>% select(Venue,Match_Number,innings,Striker,dotBalls,opposition)
+allRounder20 <- allRounder %>% select(Venue,Match_Number,innings,Striker,dotBalls,opposition)
+```
+\
+**Total runs per match**
+```{r,warning=FALSE,message=FALSE}
+batsman20 <- batsman20 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+
+bowler20 <- bowler20 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+
+allRounder20 <- allRounder20 %>% group_by(Venue,innings,opposition,Match_Number,Striker) %>% 
+  summarise(total_dotBalls = sum(dotBalls, na.rm = TRUE))
+```
+\
+**Batsman**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_58 <- batsman20 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+
+b58 <- ggplot(batsman20,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,
+                           fill = opposition)) + geom_boxplot() +
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour ="brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_58,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b58
+```
+\
+\
+**Bowler**
+```{r,warning=FALSE,message=FALSE,fig.height=10,fig.width=13}
+match_num_59 <- bowler20 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b59 <- ggplot(bowler20,aes(x = reorder(Striker , total_dotBalls), y = total_dotBalls,
+                          fill = opposition)) + geom_boxplot() + 
+  facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,colour = "brown4",
+                   position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_59,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b59
+```
+\
+\
+**All Rounder**
+```{r,warning=FALSE,message=FALSE,fig.height=11,fig.width=14}
+match_num_60 <- allRounder20 %>% group_by(opposition,Striker) %>% 
+  summarise(Count = n(),total_dotBalls=max(total_dotBalls)+0.05*diff(range(total_dotBalls)))
+
+b60 <- ggplot(allRounder20,aes(x = Striker , total_dotBalls,fill = opposition)) +
+  geom_boxplot() + facet_wrap(~Striker , scales = "free_x" , ncol = 6) +
+      stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                   colour = "brown4", position = pd, show.legend = FALSE) +
+      geom_text(data = match_num_60,
+            aes(label = paste0("n = ", Count)), position = pd, size = 3, show.legend = FALSE) + 
+      theme(axis.text.x = element_text(face = "bold",angle = 90)) +xlab("Striker")+ylab("Runs Scored")
+
+b60
+```
+\
+\
+**Compare all three batsman category**
+\
+```{r,warning=FALSE,message=FALSE,fig.width=9}
+datamerge20 <- data_merge %>% group_by(opposition,Match_Number , Striker_status) %>%
+  summarise(total_dotBalls = sum(dotBalls , na.rm = TRUE))
+
+box20 <- ggplot(datamerge20,aes(x = Striker_status , y = total_dotBalls,
+                              fill = opposition)) + geom_boxplot() + 
+        stat_summary(fun.y = mean, geom = "point", shape =18, size=2,
+                     colour = "brown4", position = pd, show.legend = FALSE)
+box20
+```
+\
+\

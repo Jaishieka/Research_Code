@@ -1,0 +1,103 @@
+---
+title: "LD_Chandimal"
+author: "S/16/373_JAISHIEKA"
+date: "12/13/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Loading the library**
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+```
+\
+\
+**Read the data set**
+```{r, warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r, warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of LD Chandimal**
+```{r,warning=FALSE,message=FALSE}
+bt1 <- data_merge %>% filter(grepl('LD Chandimal' , Striker))
+head(bt1)
+```
+\
+**Head of specific columns**
+```{r,warning=FALSE,message=FALSE}
+bt1 %>% select(innings,cum_balls,wicket,cum_runs,cum_singles,cum_doubles,cum_boundaries,cum_dotBalls) %>% head()
+```
+\
+\
+**Coxph model stratified for different innings**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_1 <- coxph(Surv(cum_balls , wicket) ~ cum_runs+cum_singles+cum_doubles+cum_boundaries+cum_dotBalls + strata(innings), data = bt1)
+summary(cox_LD_1)
+```
+\
+**Interpreting the hazard ratios (exp(coef))**
+\
+\
+**cum_runs(0.64959)** - There is a 35% of decrease in the hazard when the number of runs increased by 1 from the current ball to the next ball to be faced.
+\
+\
+**cum_singles(0.11729)** - There is a 88% of decrease in the hazard when the number of singles scored is increased by 1 from the current ball to the next ball to be faced.
+\
+\
+**cum_doubles(0.19978)** - There is a 80% of decrease in the hazard when the number of doubles scored is increased by 1 from the current ball to the next ball to be faced.
+\
+\
+**cum_boundaries(0.46505)** - There is a 53% of decrease in the hazard when the number of boundaries scored is increased by 1 from the current ball to the next ball to be faced.
+\
+\
+**cum_dotBalls(0.07632)** - There is a 92% of decrease in the hazard when the number of dot balls scored is increased by 1 from the current ball to the next ball to be faced.
+\
+\
+We can see that the concordance is a high value and also the test statistics are statistically significant. Therefore we can say that this is a good model.
+\
+\
+\
+**Test for the proportional hazard assumptions**
+```{r,warning=FALSE,message=FALSE}
+test.ph.LD_1 <- cox.zph(cox_LD_1)
+test.ph.LD_1
+```
+\
+All the covariates and the global test are not statistically significant. Therefore we can say that the ph assumptions are not violated.
+\
+\
+**Adjusted survival curve**
+```{r,warning=FALSE,message=FALSE}
+s1 <- ggadjustedcurves(cox_LD_1 , data = bt1 , size = 2,ggtheme = theme_survminer() , method = "average") + 
+      geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") + 
+      scale_x_continuous(breaks = seq(0,120,10)) + scale_y_continuous(breaks = seq(0,1,0.1))
+s1
+```
+\
+By the above graph we can see that Chandimal has a higher survival rate in the first and second innings for the first 20 balls. Then his survival rate is reducing. He has a 50% of survival rate when he is playing 30 to 40 balls in the first innings and playing around 35 balls in the second innings.
+\
+\
+His survival probability is very low after 40th ball in the first innings and around 43rd ball in the second innings.
+\
+\
+**Validating the model**
+```{r,warning=FALSE,message=FALSE}
+cox_ld <- cph(Surv(cum_balls , wicket) ~ cum_runs+cum_singles+cum_doubles+cum_boundaries+cum_dotBalls  + strat(innings), 
+              data = bt1 , surv = TRUE , x=TRUE , y=TRUE , time.inc = 30)
+validate(cox_ld, method = "randomization",u=30 ,B=40)
+```

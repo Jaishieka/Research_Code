@@ -1,0 +1,287 @@
+---
+title: "AUC_DAS"
+author: "S_16_373"
+date: "3/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of DAS Gunaratne**
+```{r,warning=FALSE,message=FALSE}
+bt6 <- data_merge %>% filter(grepl('DAS Gunaratne' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+DAS_1 <- bt6 %>% filter(innings == 1)
+```
+\
+\
+**Cox model for first innings**
+```{r,warning=FALSE,message=FALSE}
+cox_DAS_1 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = DAS_1)
+summary(cox_DAS_1)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_DAS_1 <- stepAIC(cox_DAS_1)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_DAS_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs + cum_singles + cum_doubles + ridge(cum_dotBalls), data = DAS_1)
+summary(cox_DAS_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DAS_1 <- cox.zph(cox_DAS_1_new)
+test_DAS_1
+```
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+DAS_1_cut <- survSplit(DAS_1 , cut = 33 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DAS_1_cut$hv1 <- DAS_1_cut$cum_runs  * (DAS_1_cut$start < 33)
+DAS_1_cut$hv2 <- DAS_1_cut$cum_runs  * (DAS_1_cut$start >= 33)
+
+DAS_1_cut$hv3 <- DAS_1_cut$cum_singles  * (DAS_1_cut$start < 33)
+DAS_1_cut$hv4 <- DAS_1_cut$cum_singles  * (DAS_1_cut$start >= 33)
+
+DAS_1_cut$hv5 <- DAS_1_cut$cum_doubles  * (DAS_1_cut$start < 33)
+DAS_1_cut$hv6 <- DAS_1_cut$cum_doubles  * (DAS_1_cut$start >= 33)
+
+
+cox_DAS_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +hv3 + hv4 + hv5+hv6 +ridge(cum_dotBalls) + cluster (id) , data = DAS_1_cut)
+summary(cox_DAS_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DAS_1_heav <- cox.zph(cox_DAS_1_heav)
+test_DAS_1_heav
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DAS_1 <- ggadjustedcurves(cox_DAS_1_heav , data = DAS_1_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                    ggtitle("Survival curve for DAS Gunaratne for the first innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_DAS_1
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_DAS_1 <- ggforest(cox_DAS_1_heav , data = DAS_1_cut,fontsize = 1.2)
+coef_plot_DAS_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +hv3 + hv4 + hv5+hv6 +ridge(cum_dotBalls) + cluster (id) , data = DAS_1_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_DAS_1 <- unique(DAS_1[c("Match_Number","winning_status")])
+tot_matches_DAS_1 <- nrow(match_status_DAS_1)
+win_matches_DAS_1 <- sum(match_status_DAS_1$winning_status==1)
+
+win_percent_DAS_1 <- (win_matches_DAS_1/tot_matches_DAS_1)*100
+
+win_percent_DAS_1
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_DAS_1 <- data_merge %>% filter(Match_Number %in% unique(DAS_1$Match_Number))
+tot_runs_DAS_1 <- match_played_DAS_1 %>% summarise(sum_runs = sum(tot_runs))
+DAS_runs_1 <- DAS_1 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_DAS_1 <- (DAS_runs_1/tot_runs_DAS_1)*100
+runs_contrib_percent_DAS_1
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+DAS_2 <- bt6 %>% filter(innings == 2)
+```
+\
+\
+**Cox model for second innings**
+```{r,warning=FALSE,message=FALSE}
+cox_DAS_2 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = DAS_2)
+summary(cox_DAS_2)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_DAS_2 <- stepAIC(cox_DAS_2)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_DAS_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs + cum_doubles + cum_boundaries+ ridge(cum_dotBalls), data = DAS_2)
+summary(cox_DAS_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DAS_2 <- cox.zph(cox_DAS_2_new)
+test_DAS_2
+```
+\
+\
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+DAS_2_cut <- survSplit(DAS_2 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DAS_2_cut$hv1 <- DAS_2_cut$cum_runs  * (DAS_2_cut$start < 30)
+DAS_2_cut$hv2 <- DAS_2_cut$cum_runs  * (DAS_2_cut$start >= 30)
+
+DAS_2_cut$hv3 <- DAS_2_cut$cum_boundaries  * (DAS_2_cut$start < 30)
+DAS_2_cut$hv4 <- DAS_2_cut$cum_boundaries  * (DAS_2_cut$start >= 30)
+
+
+cox_DAS_2_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 + cum_doubles+hv3 + hv4+ridge(cum_dotBalls) + cluster (id) , data = DAS_2_cut)
+summary(cox_DAS_2_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DAS_2_heav <- cox.zph(cox_DAS_2_heav)
+test_DAS_2_heav
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DAS_2 <- ggadjustedcurves(cox_DAS_2_heav , data = DAS_2_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                    ggtitle("Survival curve for DAS Gunaratne for the second innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_DAS_2
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_DAS_2 <- ggforest(cox_DAS_2_heav , data = DAS_2_cut,fontsize = 1.2)
+coef_plot_DAS_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 + cum_doubles+hv3 + hv4+ridge(cum_dotBalls) + cluster (id) , data = DAS_2_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_DAS_2 <- unique(DAS_2[c("Match_Number","winning_status")])
+tot_matches_DAS_2 <- nrow(match_status_DAS_2)
+win_matches_DAS_2 <- sum(match_status_DAS_2$winning_status==1)
+
+win_percent_DAS_2 <- (win_matches_DAS_2/tot_matches_DAS_2)*100
+
+win_percent_DAS_2
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_DAS_2 <- data_merge %>% filter(Match_Number %in% unique(DAS_2$Match_Number))
+tot_runs_DAS_2 <- match_played_DAS_2 %>% summarise(sum_runs = sum(tot_runs))
+DAS_runs_2 <- DAS_2 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_DAS_2 <- (DAS_runs_2/tot_runs_DAS_2)*100
+runs_contrib_percent_DAS_2
+```
+\
+\
+\
+***Compare different innings***
+\
+\
+**Create the data frame**
+```{r,warning=FALSE,message=FALSE}
+PlayerName_DAS <- "DAS Gunaratne"
+Innings <- c(1,2)
+Survival_prob_DAS <- c(0.9365918,0.6837539)
+winning_percent_DAS <- c(27.27273,21.42857)
+runs_contrib_percent_DAS <- c(9.216255	,10.64204	)
+
+comp_innings_DAS <- data.frame(PlayerName_DAS,Innings,Survival_prob_DAS,runs_contrib_percent_DAS,winning_percent_DAS)
+names(comp_innings_DAS) <- c("PlayerName","Innings","Survival_prob","runs_contrib_percent","winning_percent")
+comp_innings_DAS
+```
+\
+\

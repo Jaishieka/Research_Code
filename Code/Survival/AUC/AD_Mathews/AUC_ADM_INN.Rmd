@@ -1,0 +1,259 @@
+---
+title: "AUC_ADM_INN"
+author: "S_16_373"
+date: "3/7/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of AD Mathews**
+```{r,warning=FALSE,message=FALSE}
+bt2 <- data_merge %>% filter(grepl('AD Mathews' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+ADM_1 <- bt2 %>% filter(innings == 1)
+```
+\
+\
+**Cox model for first innings**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_1 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = ADM_1)
+summary(cox_ADM_1)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_ADM_1 <- stepAIC(cox_ADM_1)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_singles + cum_doubles + ridge(cum_dotBalls), data = ADM_1)
+summary(cox_ADM_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ADM_1 <- cox.zph(cox_ADM_1_new)
+test_ADM_1
+```
+\
+\
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+ADM_1_cut <- survSplit(ADM_1 , cut = 38 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+ADM_1_cut$hv1 <- ADM_1_cut$cum_singles * (ADM_1_cut$start < 38)
+ADM_1_cut$hv2 <- ADM_1_cut$cum_singles * (ADM_1_cut$start >= 38)
+
+
+cox_ADM_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +cum_doubles+ridge(cum_dotBalls) + cluster (id) , data = ADM_1_cut)
+summary(cox_ADM_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ADM_1_heav <- cox.zph(cox_ADM_1_heav)
+test_ADM_1_heav
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ADM_1 <- ggadjustedcurves(cox_ADM_1_heav , data = ADM_1_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                    ggtitle("Survival curve for AD Mathews for the first innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_ADM_1
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_ADM_1 <- ggforest(cox_ADM_1_heav , data = ADM_1_cut,fontsize = 1.2)
+coef_plot_ADM_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +cum_doubles+ridge(cum_dotBalls) + cluster (id) , data = ADM_1_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_ADM_1 <- unique(ADM_1[c("Match_Number","winning_status")])
+tot_matches_ADM_1 <- nrow(match_status_ADM_1)
+win_matches_ADM_1 <- sum(match_status_ADM_1$winning_status==1)
+
+win_percent_ADM_1 <- (win_matches_ADM_1/tot_matches_ADM_1)*100
+
+win_percent_ADM_1
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_ADM_1 <- data_merge %>% filter(Match_Number %in% unique(ADM_1$Match_Number))
+tot_runs_ADM_1 <- match_played_ADM_1 %>% summarise(sum_runs = sum(tot_runs))
+ADM_runs_1 <- ADM_1 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_ADM_1 <- (ADM_runs_1/tot_runs_ADM_1)*100
+runs_contrib_percent_ADM_1
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+ADM_2 <- bt2 %>% filter(innings == 2)
+```
+\
+\
+**Cox model for second innings**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_2 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = ADM_2)
+summary(cox_ADM_2)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_ADM_2 <- stepAIC(cox_ADM_2)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_ADM_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs +  ridge(cum_dotBalls), data = ADM_2)
+summary(cox_ADM_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ADM_2 <- cox.zph(cox_ADM_2_new)
+test_ADM_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ADM_2 <- ggadjustedcurves(cox_ADM_2_new , data = ADM_2 , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                    ggtitle("Survival curve for AD Mathews for the second innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_ADM_2
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_ADM_2 <- ggforest(cox_ADM_2_new , data = ADM_2,fontsize = 1.2)
+coef_plot_ADM_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+      cum_singles + cum_doubles + cum_boundaries+ ridge(cum_dotBalls), data = ADM_2)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_ADM_2 <- unique(ADM_2[c("Match_Number","winning_status")])
+tot_matches_ADM_2 <- nrow(match_status_ADM_2)
+win_matches_ADM_2 <- sum(match_status_ADM_2$winning_status==1)
+
+win_percent_ADM_2 <- (win_matches_ADM_2/tot_matches_ADM_2)*100
+
+win_percent_ADM_2
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_ADM_2 <- data_merge %>% filter(Match_Number %in% unique(ADM_2$Match_Number))
+tot_runs_ADM_2 <- match_played_ADM_2 %>% summarise(sum_runs = sum(tot_runs))
+ADM_runs_2 <- ADM_2 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_ADM_2 <- (ADM_runs_2/tot_runs_ADM_2)*100
+runs_contrib_percent_ADM_2
+```
+\
+\
+\
+***Compare different innings***
+\
+\
+**Create the data frame**
+```{r,warning=FALSE,message=FALSE}
+PlayerName_ADM <- "AD Mathews"
+Innings <- c(1,2)
+Survival_prob_ADM <- c(0.9640348,0.9640736)
+winning_percent_ADM <- c(35.29412,35.71429)
+runs_contrib_percent_ADM <- c(14.75818,19.2602	)
+
+comp_innings_ADM <- data.frame(PlayerName_ADM,Innings,Survival_prob_ADM,runs_contrib_percent_ADM,winning_percent_ADM)
+names(comp_innings_ADM) <- c("PlayerName","Innings","Survival_prob","runs_contrib_percent","winning_percent")
+comp_innings_ADM
+```
+\
+\

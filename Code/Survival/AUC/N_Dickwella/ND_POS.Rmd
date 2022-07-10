@@ -1,0 +1,200 @@
+---
+title: "ND_POS"
+author: "S_16_373"
+date: "5/16/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of N Dickwella**
+```{r,warning=FALSE,message=FALSE}
+bt11 <- data_merge %>% filter(grepl('N Dickwella' , Striker))
+```
+\
+\
+***1)Analysis for different batting position***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+bt11_ps <- bt11 %>% filter(bat_position == c(1,3))
+
+ND_diff_pos <- survdiff(Surv(cum_balls , wicket) ~ bat_position, data = bt11_ps)
+ND_diff_pos
+```
+The p value is greater than 0.05. Therefore no significant difference between the batting positions 1 and 3.
+
+\
+\
+**batting position 1**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+ND_P_1<- bt11 %>% filter(bat_position == 1)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ND_P_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                           cum_singles + cum_boundaries+ridge(cum_dotBalls), data = ND_P_1)
+
+summary(cox_ND_P_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ND_P_1 <- cox.zph(cox_ND_P_1_new)
+test_ND_P_1
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ND_P_1 <- ggadjustedcurves(cox_ND_P_1_new , data = ND_P_1 , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for N Dickwella for the 1st
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ND_P_1 <- ggforest(cox_ND_P_1_new , data = ND_P_1,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ND_P_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                           cum_singles + cum_boundaries+ridge(cum_dotBalls), data = ND_P_1)
+```
+\
+\
+**3rd batting position**
+\
+\
+**Filter the second bat_position**
+```{r,warning=FALSE,message=FALSE}
+ND_P_3 <- bt11 %>% filter(bat_position == 3)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ND_P_3_new <- coxph(Surv(cum_balls , wicket) ~ 
+                           cum_singles + cum_boundaries+ridge(cum_dotBalls), data = ND_P_3)
+summary(cox_ND_P_3_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ND_P_3 <- cox.zph(cox_ND_P_3_new)
+test_ND_P_3
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ND_P_3 <- ggadjustedcurves(cox_ND_P_3_new , data = ND_P_3 , size = 2,ggtheme = 
+                        theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) , 
+                        linetype = "dashed") +ggtitle("Survival curve for N Dickwella for 
+                        the 3rd batting position") + theme(axis.title = element_text(size = 15),
+                        axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ND_P_3 <- ggforest(cox_ND_P_3_new , data = ND_P_3,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ND_P_3
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                           cum_singles + cum_boundaries+ridge(cum_dotBalls), data = ND_P_3)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+NDSurvPlotPos <- ggarrange(cox_plot_ND_P_1,cox_plot_ND_P_3,ncol = 2)
+NDSurvPlotPos
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NDSurvPlotPos.eps"),width = 10,height = 7,horizontal = FALSE)
+NDSurvPlotPos
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+ND_P_1 <- rename(ND_P_1,cumulative_singles = cum_singles,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+ND_P_3 <- rename(ND_P_3,cumulative_singles = cum_singles,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+ND_p_1 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                           cumulative_singles + cumulative_fours+ridge(cumulative_dot_balls), data = ND_P_1)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of N Dickwella for the 1st batting position")
+
+ND_p_3 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                           cumulative_singles + cumulative_fours+ridge(cumulative_dot_balls), data = ND_P_3)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of N Dickwella for the 3rd batting position")
+
+NDAalenPos <- ggarrange(ND_p_1,ND_p_3, nrow = 2)
+NDAalenPos
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NDAalenPos.eps"),width = 10,height = 7,horizontal = FALSE)
+NDAalenPos
+dev.off()
+```
+

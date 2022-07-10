@@ -1,0 +1,280 @@
+---
+title: "AUC_BKG_INN"
+author: "S_16_373"
+date: "3/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of BKG Mendis**
+```{r,warning=FALSE,message=FALSE}
+bt3 <- data_merge %>% filter(grepl('BKG Mendis' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+BKG_1 <- bt3 %>% filter(innings == 1)
+```
+\
+\
+**Cox model for first innings**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_1 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = BKG_1)
+summary(cox_BKG_1)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_BKG_1 <- stepAIC(cox_BKG_1)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_singles + cum_doubles + cum_boundaries+ ridge(cum_dotBalls), data = BKG_1)
+summary(cox_BKG_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_1 <- cox.zph(cox_BKG_1_new)
+test_BKG_1
+```
+\
+\
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+BKG_1_cut <- survSplit(BKG_1 , cut = 35 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+BKG_1_cut$hv1 <- BKG_1_cut$cum_singles * (BKG_1_cut$start < 35)
+BKG_1_cut$hv2 <- BKG_1_cut$cum_singles * (BKG_1_cut$start >= 35)
+
+
+cox_BKG_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +cum_doubles+ cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = BKG_1_cut)
+summary(cox_BKG_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_1_heav <- cox.zph(cox_BKG_1_heav)
+test_BKG_1_heav
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_BKG_1 <- ggadjustedcurves(cox_BKG_1_heav , data = BKG_1_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +xlim(0,70) +
+                    ggtitle("Survival curve for BKG Mendis for the first innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_BKG_1
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_BKG_1 <- ggforest(cox_BKG_1_heav , data = BKG_1_cut,fontsize = 1.2)
+coef_plot_BKG_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +cum_doubles+ cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = BKG_1_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_BKG_1 <- unique(BKG_1[c("Match_Number","winning_status")])
+tot_matches_BKG_1 <- nrow(match_status_BKG_1)
+win_matches_BKG_1 <- sum(match_status_BKG_1$winning_status==1)
+
+win_percent_BKG_1 <- (win_matches_BKG_1/tot_matches_BKG_1)*100
+
+win_percent_BKG_1
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_BKG_1 <- data_merge %>% filter(Match_Number %in% unique(BKG_1$Match_Number))
+tot_runs_BKG_1 <- match_played_BKG_1 %>% summarise(sum_runs = sum(tot_runs))
+BKG_runs_1 <- BKG_1 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_BKG_1 <- (BKG_runs_1/tot_runs_BKG_1)*100
+runs_contrib_percent_BKG_1
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+BKG_2 <- bt3 %>% filter(innings == 2)
+```
+\
+\
+**Cox model for second innings**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_2 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = BKG_2)
+summary(cox_BKG_2)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_BKG_2 <- stepAIC(cox_BKG_2)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_boundaries+ ridge(cum_dotBalls), data = BKG_2)
+summary(cox_BKG_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_2 <- cox.zph(cox_BKG_2_new)
+test_BKG_2
+```
+\
+\
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+BKG_2_cut <- survSplit(BKG_2 , cut = 35 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+BKG_2_cut$hv1 <- BKG_2_cut$cum_singles * (BKG_2_cut$start < 35)
+BKG_2_cut$hv2 <- BKG_2_cut$cum_singles * (BKG_2_cut$start >= 35)
+
+
+cox_BKG_2_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = BKG_2_cut)
+summary(cox_BKG_2_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_2_heav <- cox.zph(cox_BKG_2_heav)
+test_BKG_2_heav
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_BKG_2 <- ggadjustedcurves(cox_BKG_2_heav , data = BKG_2_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                    ggtitle("Survival curve for BKG Mendis for the second innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_BKG_2
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_BKG_2 <- ggforest(cox_BKG_2_heav , data = BKG_2_cut,fontsize = 1.2)
+coef_plot_BKG_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      hv1 + hv2 +cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = BKG_2_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_BKG_2 <- unique(BKG_2[c("Match_Number","winning_status")])
+tot_matches_BKG_2 <- nrow(match_status_BKG_2)
+win_matches_BKG_2 <- sum(match_status_BKG_2$winning_status==1)
+
+win_percent_BKG_2 <- (win_matches_BKG_2/tot_matches_BKG_2)*100
+
+win_percent_BKG_2
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_BKG_2 <- data_merge %>% filter(Match_Number %in% unique(BKG_2$Match_Number))
+tot_runs_BKG_2 <- match_played_BKG_2 %>% summarise(sum_runs = sum(tot_runs))
+BKG_runs_2 <- BKG_2 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_BKG_2 <- (BKG_runs_2/tot_runs_BKG_2)*100
+runs_contrib_percent_BKG_2
+```
+\
+\
+\
+***Compare different innings***
+\
+\
+**Create the data frame**
+```{r,warning=FALSE,message=FALSE}
+PlayerName_BKG <- "BKG Mendis"
+Innings <- c(1,2)
+Survival_prob_BKG <- c(0.9685794,0.919333)
+winning_percent_BKG <- c(37.77778,26.66667)
+runs_contrib_percent_BKG <- c(14.01472,9.695122)
+
+comp_innings_BKG <- data.frame(PlayerName_BKG,Innings,Survival_prob_BKG,runs_contrib_percent_BKG,winning_percent_BKG)
+names(comp_innings_BKG) <- c("PlayerName","Innings","Survival_prob","runs_contrib_percent","winning_percent")
+comp_innings_BKG
+```
+\
+\

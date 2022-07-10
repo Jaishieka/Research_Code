@@ -1,0 +1,82 @@
+---
+title: "Chandimal"
+author: "S_16_373"
+date: "1/10/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Loading the library**
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+```
+\
+\
+**Read the data set**
+```{r, warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r, warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of LD Chandimal**
+```{r,warning=FALSE,message=FALSE}
+bt1 <- data_merge %>% filter(grepl('LD Chandimal' , Striker))
+head(bt1)
+```
+\
+**Head of specific columns**
+```{r,warning=FALSE,message=FALSE}
+bt1 %>% select(innings,cum_balls,wicket,cum_runs,cum_singles,cum_doubles,cum_boundaries,cum_dotBalls) %>% head()
+```
+\
+\
+**Cox model for single variables**
+\
+\
+**Cumulative runs**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_runs <- coxph(Surv(cum_balls , wicket) ~ cum_runs, data = bt1)
+summary(cox_LD_runs)
+```
+\
+\
+**Cumulative singles**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_singles <- coxph(Surv(cum_balls , wicket) ~ cum_singles, data = bt1)
+summary(cox_LD_singles)
+```
+\
+\
+**Cumulative doubles**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_doubles <- coxph(Surv(cum_balls , wicket) ~ cum_doubles, data = bt1)
+summary(cox_LD_doubles)
+```
+\
+\
+**Cumulative boundaries**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_boundaries <- coxph(Surv(cum_balls , wicket) ~ cum_boundaries, data = bt1)
+summary(cox_LD_boundaries)
+```
+\
+\
+**Cumulative dotballs**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_dotBalls <- coxph(Surv(cum_balls , wicket) ~ cum_dotBalls, data = bt1)
+summary(cox_LD_dotBalls)
+```

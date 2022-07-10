@@ -1,0 +1,341 @@
+---
+title: "MDKJ_POS"
+author: "S_16_373"
+date: "5/16/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of MDKJ Perera**
+```{r,warning=FALSE,message=FALSE}
+bt10 <- data_merge %>% filter(grepl('MDKJ Perera' , Striker))
+```
+\
+\
+***1)Analysis for different batting position***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+bt10_ps <- bt10 %>% filter(bat_position == c(1,2,3,4))
+
+MDKJ_diff_pos <- survdiff(Surv(cum_balls , wicket) ~ bat_position, data = bt10_ps)
+MDKJ_diff_pos
+```
+The p value is greater than 0.05. Therefore no significant difference between the batting positions 1,2,3 and 4.
+
+\
+\
+**batting position 1**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_1<- bt10 %>% filter(bat_position == 1)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_1_cut <- survSplit(MDKJ_P_1 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+MDKJ_P_1_cut$hv1 <- MDKJ_P_1_cut$cum_boundaries  * (MDKJ_P_1_cut$start < 30)
+MDKJ_P_1_cut$hv2 <- MDKJ_P_1_cut$cum_boundaries  * (MDKJ_P_1_cut$start >= 30)
+
+cox_MDKJ_P_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_1_cut)
+
+summary(cox_MDKJ_P_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_P_1 <- cox.zph(cox_MDKJ_P_1_heav)
+test_MDKJ_P_1
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_P_1 <- ggadjustedcurves(cox_MDKJ_P_1_heav , data = MDKJ_P_1_cut , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for MDKJ Perera for the 1st
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDKJ_P_1 <- ggforest(cox_MDKJ_P_1_heav , data = MDKJ_P_1_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDKJ_P_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_1_cut)
+```
+\
+\
+**2nd batting position**
+\
+\
+**Filter the second bat_position**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_2 <- bt10 %>% filter(bat_position == 2)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_2_cut <- survSplit(MDKJ_P_2 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+MDKJ_P_2_cut$hv1 <- MDKJ_P_2_cut$cum_boundaries  * (MDKJ_P_2_cut$start < 30)
+MDKJ_P_2_cut$hv2 <- MDKJ_P_2_cut$cum_boundaries  * (MDKJ_P_2_cut$start >= 30)
+
+cox_MDKJ_P_2_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_2_cut)
+
+summary(cox_MDKJ_P_2_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_P_2 <- cox.zph(cox_MDKJ_P_2_heav)
+test_MDKJ_P_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_P_2 <- ggadjustedcurves(cox_MDKJ_P_2_heav , data = MDKJ_P_2_cut , size = 2,ggtheme = 
+                        theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) , 
+                        linetype = "dashed") +ggtitle("Survival curve for MDKJ Perera for 
+                        the 2nd batting position") + theme(axis.title = element_text(size = 15),
+                        axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDKJ_P_2 <- ggforest(cox_MDKJ_P_2_heav , data = MDKJ_P_2_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDKJ_P_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_2_cut)
+```
+\
+\
+**batting position 3**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_3<- bt10 %>% filter(bat_position == 3)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_3_cut <- survSplit(MDKJ_P_3 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+MDKJ_P_3_cut$hv1 <- MDKJ_P_3_cut$cum_boundaries  * (MDKJ_P_3_cut$start < 30)
+MDKJ_P_3_cut$hv2 <- MDKJ_P_3_cut$cum_boundaries  * (MDKJ_P_3_cut$start >= 30)
+
+cox_MDKJ_P_3_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_3_cut)
+
+
+summary(cox_MDKJ_P_3_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_P_3 <- cox.zph(cox_MDKJ_P_3_heav)
+test_MDKJ_P_3
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_P_3 <- ggadjustedcurves(cox_MDKJ_P_3_heav , data = MDKJ_P_3_cut , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for MDKJ Perera for the 3rd
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDKJ_P_3 <- ggforest(cox_MDKJ_P_3_heav , data = MDKJ_P_3_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDKJ_P_3
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_3_cut)
+```
+\
+\
+**batting position 4**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_4<- bt10 %>% filter(bat_position == 4)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_P_4_cut <- survSplit(MDKJ_P_4 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+MDKJ_P_4_cut$hv1 <- MDKJ_P_4_cut$cum_boundaries  * (MDKJ_P_4_cut$start < 30)
+MDKJ_P_4_cut$hv2 <- MDKJ_P_4_cut$cum_boundaries  * (MDKJ_P_4_cut$start >= 30)
+
+cox_MDKJ_P_4_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_4_cut)
+
+summary(cox_MDKJ_P_4_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_P_4 <- cox.zph(cox_MDKJ_P_4_heav)
+test_MDKJ_P_4
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_P_4 <- ggadjustedcurves(cox_MDKJ_P_4_heav , data = MDKJ_P_4_cut , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for MDKJ Perera for the 4th
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDKJ_P_4 <- ggforest(cox_MDKJ_P_4_heav , data = MDKJ_P_4_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDKJ_P_4
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                             cum_runs +hv1 + hv2 + ridge(cum_dotBalls) + cluster (id) , data = MDKJ_P_4_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+MDKJSurvPlotPos <- ggarrange(cox_plot_MDKJ_P_1,cox_plot_MDKJ_P_2,cox_plot_MDKJ_P_3,cox_plot_MDKJ_P_4,ncol  = 2)
+MDKJSurvPlotPos
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"MDKJSurvPlotPos.eps"),width = 10,height = 7,horizontal = FALSE)
+MDKJSurvPlotPos
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+MDKJ_P_1_cut <- rename(MDKJ_P_1_cut,cumulative_runs=cum_runs,cumulative_fours_lt30 = hv1, cumulative_fours_ge30 = hv2, 
+                       cumulative_dot_balls=cum_dotBalls)
+MDKJ_P_2_cut <- rename(MDKJ_P_2_cut,cumulative_runs=cum_runs,cumulative_fours_lt30 = hv1, cumulative_fours_ge30 = hv2, 
+                       cumulative_dot_balls=cum_dotBalls)
+MDKJ_P_3_cut <- rename(MDKJ_P_3_cut,cumulative_runs=cum_runs,cumulative_fours_lt30 = hv1, cumulative_fours_ge30 = hv2, 
+                       cumulative_dot_balls=cum_dotBalls)
+MDKJ_P_4_cut <- rename(MDKJ_P_4_cut,cumulative_runs=cum_runs,cumulative_fours_lt30 = hv1, cumulative_fours_ge30 = hv2, 
+                       cumulative_dot_balls=cum_dotBalls)
+
+MDKJ_p1 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                             cumulative_runs +cumulative_fours_lt30 + cumulative_fours_ge30 + ridge(cumulative_dot_balls) + 
+                            cluster (id) , data = MDKJ_P_1_cut)) + 
+  theme(legend.position = "none") + ggtitle("Aalen plot of MDKJ Perera for the 1st batting position")
+
+MDKJ_p2 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                             cumulative_runs +cumulative_fours_lt30 + cumulative_fours_ge30 + ridge(cumulative_dot_balls) + 
+                            cluster (id) , data = MDKJ_P_2_cut))+ 
+  theme(legend.position = "none") + ggtitle("Aalen plot of MDKJ Perera for the 2nd batting position")
+
+MDKJ_p3 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                             cumulative_runs +cumulative_fours_lt30 + cumulative_fours_ge30 + ridge(cumulative_dot_balls) + 
+                            cluster (id) , data = MDKJ_P_3_cut))+ 
+  theme(legend.position = "none") + ggtitle("Aalen plot of MDKJ Perera for the 3rd batting position")
+
+MDKJ_p4 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                             cumulative_runs +cumulative_fours_lt30 + cumulative_fours_ge30 + ridge(cumulative_dot_balls) + 
+                            cluster (id) , data = MDKJ_P_4_cut))+ 
+  theme(legend.position = "none") + ggtitle("Aalen plot of MDKJ Perera for the 4th batting position")
+
+MDKJAalenPos <- ggarrange(MDKJ_p1,MDKJ_p2,MDKJ_p3,MDKJ_p4, nrow = 4)
+MDKJAalenPos
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"MDKJAalenPos.eps"),width = 10,height = 7,horizontal = FALSE)
+MDKJAalenPos
+dev.off()
+```
+

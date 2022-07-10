@@ -1,0 +1,213 @@
+---
+title: "MDKJ_VEN"
+author: "S_16_373"
+date: "5/16/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of MDKJ Perera**
+```{r,warning=FALSE,message=FALSE}
+bt10 <- data_merge %>% filter(grepl('MDKJ Perera' , Striker))
+```
+\
+\
+***1)Analysis for two different Venue***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+MDKJ_diff_ven <- survdiff(Surv(cum_balls , wicket) ~ Venue, data = bt10)
+MDKJ_diff_ven
+```
+The p value is greater than 0.05. Therefore we cannot see a significant difference between the Venue.
+
+\
+\
+**Home**
+\
+\
+**Filter the first Venue**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_H <- bt10 %>% filter(Venue == "Home")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_H_cut <- survSplit(MDKJ_H , cut = 40 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+MDKJ_H_cut$hv1 <- MDKJ_H_cut$cum_singles * (MDKJ_H_cut$start < 40)
+MDKJ_H_cut$hv2 <- MDKJ_H_cut$cum_singles * (MDKJ_H_cut$start >= 40)
+
+
+cox_MDKJ_H_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = MDKJ_H_cut)
+
+summary(cox_MDKJ_H_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_H <- cox.zph(cox_MDKJ_H_heav)
+test_MDKJ_H
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_H <- ggadjustedcurves(cox_MDKJ_H_heav , data = MDKJ_H_cut , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for MDKJ Perera for Venue Home") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDKJ_H <- ggforest(cox_MDKJ_H_heav , data = MDKJ_H_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDKJ_H
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = MDKJ_H_cut)
+```
+\
+\
+**Second Venue**
+\
+\
+**Filter the second Venue**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_O <- bt10 %>% filter(Venue == "Overseas")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_O_cut <- survSplit(MDKJ_O , cut = 40 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+MDKJ_O_cut$hv1 <- MDKJ_O_cut$cum_singles * (MDKJ_O_cut$start < 40)
+MDKJ_O_cut$hv2 <- MDKJ_O_cut$cum_singles * (MDKJ_O_cut$start >= 40)
+
+
+cox_MDKJ_O_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                           hv1 + hv2 +cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = MDKJ_O_cut)
+
+summary(cox_MDKJ_O_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_O <- cox.zph(cox_MDKJ_O_heav)
+test_MDKJ_O
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_O <- ggadjustedcurves(cox_MDKJ_O_heav , data = MDKJ_O_cut , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for MDKJ Perera for Venue Overseas") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDKJ_O <- ggforest(cox_MDKJ_O_heav , data = MDKJ_O_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDKJ_O
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                           hv1 + hv2 +cum_boundaries+ridge(cum_dotBalls) + cluster (id) , data = MDKJ_O_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+MDKJSurvPlotVen <- ggarrange(cox_plot_MDKJ_H,cox_plot_MDKJ_O,ncol = 2)
+MDKJSurvPlotVen
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"MDKJSurvPlotVen.eps"),width = 10,height = 7,horizontal = FALSE)
+MDKJSurvPlotVen
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+MDKJ_H_cut <- rename(MDKJ_H_cut,cumulative_singles_lt40 = hv1, cumulative_singles_ge40 = hv2 ,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+MDKJ_O_cut <- rename(MDKJ_O_cut,cumulative_singles_lt40 = hv1, cumulative_singles_ge40 = hv2,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+MDKJ_pH <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                           cumulative_singles_lt40 + cumulative_singles_ge40 +cumulative_fours+ridge(cumulative_dot_balls) + cluster (id) , data = MDKJ_H_cut)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of MDKJ Perera for home venue")
+
+MDKJ_pO <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                           cumulative_singles_lt40 + cumulative_singles_ge40 +cumulative_fours+ridge(cumulative_dot_balls) + cluster (id) , data = MDKJ_O_cut)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of MDKJ Perera for overseas venue")
+
+MDKJAalenVen <- ggarrange(MDKJ_pH,MDKJ_pO, nrow = 2)
+MDKJAalenVen
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"MDKJAalenVen.eps"),width = 10,height = 7,horizontal = FALSE)
+MDKJAalenVen
+dev.off()
+```

@@ -1,0 +1,240 @@
+---
+title: "MDKJ_INN"
+author: "S_16_373"
+date: "3/29/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of MD Gunathilaka**
+```{r,warning=FALSE,message=FALSE}
+bt10 <- data_merge %>% filter(grepl('MDKJ Perera' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_1 <- bt10 %>% filter(innings == 1)
+```
+\
+\
+**Cox model for first innings**
+```{r,warning=FALSE,message=FALSE}
+cox_MDKJ_1 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = MDKJ_1)
+summary(cox_MDKJ_1)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_MDKJ_1 <- stepAIC(cox_MDKJ_1)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_MDKJ_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs + cum_singles + ridge(cum_dotBalls), data = MDKJ_1)
+summary(cox_MDKJ_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_1 <- cox.zph(cox_MDKJ_1_new)
+test_MDKJ_1
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_1 <- ggadjustedcurves(cox_MDKJ_1_new , data = MDKJ_1 , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +xlim(0,80) +
+                    ggtitle("Survival curve for MD Gunathilaka for the first innings") + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+
+cox_plot_MDKJ_1
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_MDKJ_1 <- ggforest(cox_MDKJ_1_new , data = MDKJ_1,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDKJ_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+      cum_runs + cum_singles + ridge(cum_dotBalls), data = MDKJ_1)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_MDKJ_1 <- unique(MDKJ_1[c("Match_Number","winning_status")])
+tot_matches_MDKJ_1 <- nrow(match_status_MDKJ_1)
+win_matches_MDKJ_1 <- sum(match_status_MDKJ_1$winning_status==1)
+
+win_percent_MDKJ_1 <- (win_matches_MDKJ_1/tot_matches_MDKJ_1)*100
+
+win_percent_MDKJ_1
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_MDKJ_1 <- data_merge %>% filter(Match_Number %in% unique(MDKJ_1$Match_Number))
+tot_runs_MDKJ_1 <- match_played_MDKJ_1 %>% summarise(sum_runs = sum(tot_runs))
+MDKJ_runs_1 <- MDKJ_1 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_MDKJ_1 <- (MDKJ_runs_1/tot_runs_MDKJ_1)*100
+runs_contrib_percent_MDKJ_1
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+MDKJ_2 <- bt10 %>% filter(innings == 2)
+```
+\
+\
+**Cox model for second innings**
+```{r,warning=FALSE,message=FALSE}
+cox_MDKJ_2 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = MDKJ_2)
+summary(cox_MDKJ_2)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_MDKJ_2 <- stepAIC(cox_MDKJ_2)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_MDKJ_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_singles + cum_doubles + cum_boundaries+ ridge(cum_dotBalls), data = MDKJ_2)
+summary(cox_MDKJ_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDKJ_2 <- cox.zph(cox_MDKJ_2_new)
+test_MDKJ_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDKJ_2 <- ggadjustedcurves(cox_MDKJ_2_new , data = MDKJ_2 , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed")  +
+                    ggtitle("Survival curve for MD Gunathilaka for the second innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_MDKJ_2
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_MDKJ_2 <- ggforest(cox_MDKJ_2_new , data = MDKJ_2,fontsize = 1.2)
+coef_plot_MDKJ_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                     cum_singles + cum_doubles + cum_boundaries+ ridge(cum_dotBalls), data = MDKJ_2)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_MDKJ_2 <- unique(MDKJ_2[c("Match_Number","winning_status")])
+tot_matches_MDKJ_2 <- nrow(match_status_MDKJ_2)
+win_matches_MDKJ_2 <- sum(match_status_MDKJ_2$winning_status==1)
+
+win_percent_MDKJ_2 <- (win_matches_MDKJ_2/tot_matches_MDKJ_2)*100
+
+win_percent_MDKJ_2
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_MDKJ_2 <- data_merge %>% filter(Match_Number %in% unique(MDKJ_2$Match_Number))
+tot_runs_MDKJ_2 <- match_played_MDKJ_2 %>% summarise(sum_runs = sum(tot_runs))
+MDKJ_runs_2 <- MDKJ_2 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_MDKJ_2 <- (MDKJ_runs_2/tot_runs_MDKJ_2)*100
+runs_contrib_percent_MDKJ_2
+```
+\
+\
+\
+***Compare different innings***
+\
+\
+**Create the data frame**
+```{r,warning=FALSE,message=FALSE}
+PlayerName_MDKJ <- "MDKJ Perera"
+Innings <- c(1,2)
+Survival_prob_MDKJ <- c(0.9649855,0.9475638)
+winning_percent_MDKJ <- c(43.33333,27.27273)
+runs_contrib_percent_MDKJ <- c(15.25226	,15.21647	)
+
+comp_innings_MDKJ <- data.frame(PlayerName_MDKJ,Innings,Survival_prob_MDKJ,runs_contrib_percent_MDKJ,winning_percent_MDKJ)
+names(comp_innings_MDKJ) <- c("PlayerName","Innings","Survival_prob","runs_contrib_percent","winning_percent")
+comp_innings_MDKJ
+```
+\
+\
+\

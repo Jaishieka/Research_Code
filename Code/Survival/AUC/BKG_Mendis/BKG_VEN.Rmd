@@ -1,0 +1,218 @@
+---
+title: "BKG_VEN"
+author: "S_16_373"
+date: "5/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of BKG Mendis**
+```{r,warning=FALSE,message=FALSE}
+bt3 <- data_merge %>% filter(grepl('BKG Mendis' , Striker))
+```
+\
+\
+***1)Analysis for two different Venue***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+BKG_diff_ven <- survdiff(Surv(cum_balls , wicket) ~ Venue, data = bt3)
+BKG_diff_ven
+```
+The p value is less than 0.05. Therefore there is a significant difference between the Venue.
+
+\
+\
+**Home**
+\
+\
+**Filter the first Venue**
+```{r,warning=FALSE,message=FALSE}
+BKG_H <- bt3 %>% filter(Venue == "Home")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+BKG_H_cut <- survSplit(BKG_H , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+BKG_H_cut$hv1 <- BKG_H_cut$cum_singles * (BKG_H_cut$start < 30)
+BKG_H_cut$hv2 <- BKG_H_cut$cum_singles * (BKG_H_cut$start >= 30)
+
+
+cox_BKG_H_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +cum_doubles+ cum_boundaries+ridge(cum_dotBalls) + cluster (id) , 
+                        data = BKG_H_cut)
+
+summary(cox_BKG_H_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_H <- cox.zph(cox_BKG_H_heav)
+test_BKG_H
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_BKG_H <- ggadjustedcurves(cox_BKG_H_heav , data = BKG_H_cut , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for BKG Mendis for Venue Home") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_BKG_H <- ggforest(cox_BKG_H_heav , data = BKG_H_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_BKG_H
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +cum_doubles+ cum_boundaries+ridge(cum_dotBalls) + cluster (id) , 
+                        data = BKG_H_cut)
+```
+\
+\
+**Second Venue**
+\
+\
+**Filter the second Venue**
+```{r,warning=FALSE,message=FALSE}
+BKG_O <- bt3 %>% filter(Venue == "Overseas")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+BKG_O_cut <- survSplit(BKG_O , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+BKG_O_cut$hv1 <- BKG_O_cut$cum_singles * (BKG_O_cut$start < 30)
+BKG_O_cut$hv2 <- BKG_O_cut$cum_singles * (BKG_O_cut$start >= 30)
+
+
+cox_BKG_O_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +cum_doubles+ cum_boundaries+ridge(cum_dotBalls) + cluster (id) ,
+                        data = BKG_O_cut)
+summary(cox_BKG_O_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_O <- cox.zph(cox_BKG_O_heav)
+test_BKG_O
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_BKG_O <- ggadjustedcurves(cox_BKG_O_heav , data = BKG_O_cut , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for BKG Mendis for Venue Overseas") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_BKG_O <- ggforest(cox_BKG_O_heav , data = BKG_O_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_BKG_O
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +cum_doubles+ cum_boundaries+ridge(cum_dotBalls) + cluster (id) ,
+                        data = BKG_O_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+BKGSurvPlotVen <- ggarrange(cox_plot_BKG_H,cox_plot_BKG_O,ncol = 2)
+BKGSurvPlotVen
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"BKGSurvPlotVen.eps"),width = 10,height = 7,horizontal = FALSE)
+BKGSurvPlotVen
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+BKG_H_cut <- rename(BKG_H_cut,cumulative_singles_lt30 = hv1, cumulative_singles_ge30 = hv2 ,cumulative_doubles = 
+                      cum_doubles,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+BKG_O_cut <- rename(BKG_O_cut,cumulative_singles_lt30 = hv1, cumulative_singles_ge30 = hv2,cumulative_doubles = 
+                      cum_doubles,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+BKG_pH <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                          cumulative_singles_lt30 + cumulative_singles_ge30 +cumulative_doubles+ 
+                           cumulative_fours+ridge(cumulative_dot_balls) + cluster (id) ,data = BKG_H_cut)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of BKG Mendis for home venue")
+
+BKG_pO <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                          cumulative_singles_lt30 + cumulative_singles_ge30 +cumulative_doubles+ 
+                           cumulative_fours+ridge(cumulative_dot_balls) + cluster (id) ,data = BKG_O_cut)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of BKG Mendis for overseas venue")
+
+BKGAalenVen <- ggarrange(BKG_pH,BKG_pO, nrow = 2)
+BKGAalenVen
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"BKGAalenVen.eps"),width = 10,height = 7,horizontal = FALSE)
+BKGAalenVen
+dev.off()
+```

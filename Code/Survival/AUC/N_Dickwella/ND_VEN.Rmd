@@ -1,0 +1,200 @@
+---
+title: "ND_VEN"
+author: "S_16_373"
+date: "5/16/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of N Dickwella**
+```{r,warning=FALSE,message=FALSE}
+bt11 <- data_merge %>% filter(grepl('N Dickwella' , Striker))
+```
+\
+\
+***1)Analysis for two different Venue***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+ND_diff_ven <- survdiff(Surv(cum_balls , wicket) ~ Venue, data = bt11)
+ND_diff_ven
+```
+The p value is less than 0.05. Therefore we have a significant difference between the Venue.
+
+\
+\
+**Home**
+\
+\
+**Filter the first Venue**
+```{r,warning=FALSE,message=FALSE}
+ND_H <- bt11 %>% filter(Venue == "Home")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ND_H_new <- coxph(Surv(cum_balls , wicket) ~ 
+                    cum_singles+cum_doubles+ridge(cum_dotBalls), data = ND_H)
+
+summary(cox_ND_H_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ND_H <- cox.zph(cox_ND_H_new)
+test_ND_H
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ND_H <- ggadjustedcurves(cox_ND_H_new , data = ND_H , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for N Dickwella for Venue Home") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ND_H <- ggforest(cox_ND_H_new , data = ND_H,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ND_H
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                    cum_singles+cum_doubles+ridge(cum_dotBalls), data = ND_H)
+```
+\
+\
+**Second Venue**
+\
+\
+**Filter the second Venue**
+```{r,warning=FALSE,message=FALSE}
+ND_O <- bt11 %>% filter(Venue == "Overseas")
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_ND_O_new <- coxph(Surv(cum_balls , wicket) ~ 
+                        cum_singles+cum_doubles+ridge(cum_dotBalls), data = ND_O)
+
+summary(cox_ND_O_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_ND_O <- cox.zph(cox_ND_O_new)
+test_ND_O
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_ND_O <- ggadjustedcurves(cox_ND_O_new , data = ND_O , size = 2,
+                          ggtheme = theme_survminer()) + 
+                          geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                          ggtitle("Survival curve for N Dickwella for Venue Overseas") + 
+                          theme(axis.title = element_text(size = 15),
+                                axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_ND_O <- ggforest(cox_ND_O_new , data = ND_O,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_ND_O
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                        cum_singles+cum_doubles+ridge(cum_dotBalls), data = ND_O)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+NDSurvPlotVen <- ggarrange(cox_plot_ND_H,cox_plot_ND_O,ncol = 2)
+NDSurvPlotVen
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NDSurvPlotVen.eps"),width = 10,height = 7,horizontal = FALSE)
+NDSurvPlotVen
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+ND_H <- rename(ND_H,cumulative_singles = cum_singles, cumulative_doubles = cum_doubles,cumulative_dot_balls=cum_dotBalls)
+ND_O <- rename(ND_O,cumulative_singles = cum_singles, cumulative_doubles = cum_doubles,cumulative_dot_balls=cum_dotBalls)
+
+ND_pH <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                        cumulative_singles+cumulative_doubles+ridge(cumulative_dot_balls), data = ND_H)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of N Dickwella for home venue")
+
+ND_pO <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                        cumulative_singles+cumulative_doubles+ridge(cumulative_dot_balls), data = ND_O))+
+  theme(legend.position = "none") + ggtitle("Aalen plot of N Dickwella for overseas venue")
+
+NDAalenVen <- ggarrange(ND_pH,ND_pO, nrow = 2)
+NDAalenVen
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"NDAalenVen.eps"),width = 10,height = 7,horizontal = FALSE)
+NDAalenVen
+dev.off()
+```

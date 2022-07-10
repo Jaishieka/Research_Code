@@ -1,0 +1,279 @@
+---
+title: "DMS_POS"
+author: "S_16_373"
+date: "5/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of DM de Silva**
+```{r,warning=FALSE,message=FALSE}
+bt <- data_merge %>% filter(grepl('DM de Silva' , Striker))
+```
+\
+\
+***1)Analysis for different batting position***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+bt_ps <- bt %>% filter(bat_position == c(5,6,7))
+
+DMS_diff_pos <- survdiff(Surv(cum_balls , wicket) ~ bat_position, data = bt_ps)
+DMS_diff_pos
+```
+The p value is greater than 0.05. Therefore we cannot see a significant difference between the batting positions 5,6 and 7.
+\
+\
+**batting position 5**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+DMS_P_5<- bt %>% filter(bat_position == 5)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+DMS_P_5_cut <- survSplit(DMS_P_5 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DMS_P_5_cut$hv1 <- DMS_P_5_cut$cum_runs  * (DMS_P_5_cut$start < 30)
+DMS_P_5_cut$hv2 <- DMS_P_5_cut$cum_runs  * (DMS_P_5_cut$start >= 30)
+
+cox_DMS_P_5_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                            cum_singles +hv1 + hv2 + cum_boundaries + ridge(cum_dotBalls) + cluster (id) , 
+                          data = DMS_P_5_cut)
+
+summary(cox_DMS_P_5_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_P_5 <- cox.zph(cox_DMS_P_5_heav)
+test_DMS_P_5
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DMS_P_5 <- ggadjustedcurves(cox_DMS_P_5_heav , data = DMS_P_5_cut , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for DM de Silva for the 5th
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_DMS_P_5 <- ggforest(cox_DMS_P_5_heav , data = DMS_P_5_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_DMS_P_5
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      cum_singles +hv1 + hv2 + cum_boundaries + ridge(cum_dotBalls) + cluster (id) , data = DMS_P_5_cut)
+```
+\
+\
+**batting position 6**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE }
+DMS_P_6<- bt %>% filter(bat_position == 6)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+DMS_P_6_cut <- survSplit(DMS_P_6 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DMS_P_6_cut$hv1 <- DMS_P_6_cut$cum_runs  * (DMS_P_6_cut$start < 30)
+DMS_P_6_cut$hv2 <- DMS_P_6_cut$cum_runs  * (DMS_P_6_cut$start >= 30)
+
+cox_DMS_P_6_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                            cum_singles +hv1 + hv2 + cum_boundaries + ridge(cum_dotBalls) + cluster (id) , 
+                          data = DMS_P_6_cut)
+
+summary(cox_DMS_P_6_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_P_6 <- cox.zph(cox_DMS_P_6_heav)
+test_DMS_P_6
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DMS_P_6 <- ggadjustedcurves(cox_DMS_P_6_heav , data = DMS_P_6_cut , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for DM de Silva for the 6th
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_DMS_P_6 <- ggforest(cox_DMS_P_6_heav , data = DMS_P_6_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_DMS_P_6
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      cum_singles +hv1 + hv2 + cum_boundaries + ridge(cum_dotBalls) + cluster (id) , data = DMS_P_6_cut)
+```
+\
+\
+\
+\
+**7th batting position**
+\
+\
+**Filter the second bat_position**
+```{r,warning=FALSE,message=FALSE}
+DMS_P_7 <- bt %>% filter(bat_position == 7)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+DMS_P_7_cut <- survSplit(DMS_P_7 , cut = 30 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+DMS_P_7_cut$hv1 <- DMS_P_7_cut$cum_runs  * (DMS_P_7_cut$start < 30)
+DMS_P_7_cut$hv2 <- DMS_P_7_cut$cum_runs  * (DMS_P_7_cut$start >= 30)
+
+cox_DMS_P_7_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                            cum_singles +hv1 + hv2 + cum_boundaries + ridge(cum_dotBalls) + cluster (id) , 
+                          data = DMS_P_7_cut)
+summary(cox_DMS_P_7_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_DMS_P_7 <- cox.zph(cox_DMS_P_7_heav)
+test_DMS_P_7
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_DMS_P_7 <- ggadjustedcurves(cox_DMS_P_7_heav , data = DMS_P_7_cut , size = 2,ggtheme = 
+                        theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) , 
+                        linetype = "dashed") +ggtitle("Survival curve for DM de Silva for 
+                        the 7th batting position") + theme(axis.title = element_text(size = 15),
+                        axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_DMS_P_7 <- ggforest(cox_DMS_P_7_heav , data = DMS_P_7_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_DMS_P_7
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      cum_singles +hv1 + hv2 + cum_boundaries + ridge(cum_dotBalls) + cluster (id) , data = DMS_P_7_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+DMSSurvPlotPos <- ggarrange(cox_plot_DMS_P_5,cox_plot_DMS_P_6,cox_plot_DMS_P_7)
+DMSSurvPlotPos
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"DMSSurvPlotPos.eps"),width = 10,height = 7,horizontal = FALSE)
+DMSSurvPlotPos
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(15,20)}
+DMS_P_5_cut <- rename(DMS_P_5_cut,cumulative_singles = cum_singles,cumulative_runs_lt30 = hv1, cumulative_runs_ge30 = 
+                      hv2,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+DMS_P_6_cut <- rename(DMS_P_6_cut,cumulative_singles = cum_singles,cumulative_runs_lt30 = hv1, cumulative_runs_ge30 = 
+                      hv2,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+DMS_P_7_cut <- rename(DMS_P_7_cut,cumulative_singles = cum_singles,cumulative_runs_lt30 = hv1, cumulative_runs_ge30 = 
+                      hv2,cumulative_fours = cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+
+DMS_p5 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+      cumulative_singles +cumulative_runs_lt30 + cumulative_runs_ge30 + cumulative_fours + ridge(cumulative_dot_balls) + 
+        cluster (id) , data = DMS_P_5_cut)) +theme(legend.position = "none") + 
+  ggtitle("Aalen plot of DM de Silva for 5th batting position")
+
+DMS_p6 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+      cumulative_singles +cumulative_runs_lt30 + cumulative_runs_ge30 + cumulative_fours + ridge(cumulative_dot_balls) + 
+        cluster (id) , data = DMS_P_6_cut)) +theme(legend.position = "none") + 
+  ggtitle("Aalen plot of DM de Silva for 6th batting position")
+
+DMS_p7 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+      cumulative_singles +cumulative_runs_lt30 + cumulative_runs_ge30 + cumulative_fours + ridge(cumulative_dot_balls) + 
+        cluster (id) , data = DMS_P_7_cut)) +theme(legend.position = "none") + 
+  ggtitle("Aalen plot of DM de Silva for 7th batting position")
+
+DMSAalenPos <- ggarrange(DMS_p5,DMS_p6,DMS_p7, nrow = 3)
+DMSAalenPos
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"DMSAalenPos.eps"),width = 10,height = 20,horizontal = FALSE)
+DMSAalenPos
+dev.off()
+```

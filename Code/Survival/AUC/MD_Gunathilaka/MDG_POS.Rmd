@@ -1,0 +1,202 @@
+---
+title: "MDG_POS"
+author: "S_16_373"
+date: "5/10/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of MD Gunathilaka**
+```{r,warning=FALSE,message=FALSE}
+bt4 <- data_merge %>% filter(grepl('MD Gunathilaka' , Striker))
+```
+\
+\
+***1)Analysis for different batting position***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+bt4_ps <- bt4 %>% filter(bat_position == c(1,2))
+
+MDG_diff_pos <- survdiff(Surv(cum_balls , wicket) ~ bat_position, data = bt4_ps)
+MDG_diff_pos
+```
+The p value is greater than 0.05. Therefore no significant difference between the batting positions 1 and 2.
+
+\
+\
+**batting position 1**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+MDG_P_1<- bt4 %>% filter(bat_position == 1)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_MDG_P_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                           cum_runs + cum_doubles +cum_boundaries+ridge(cum_dotBalls), data = MDG_P_1)
+
+summary(cox_MDG_P_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDG_P_1 <- cox.zph(cox_MDG_P_1_new)
+test_MDG_P_1
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDG_P_1 <- ggadjustedcurves(cox_MDG_P_1_new , data = MDG_P_1 , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for MD Gunathilaka for the 1st
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDG_P_1 <- ggforest(cox_MDG_P_1_new , data = MDG_P_1,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDG_P_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+      cum_runs + cum_doubles +cum_boundaries+ridge(cum_dotBalls), data = MDG_P_1)
+```
+\
+\
+**2nd batting position**
+\
+\
+**Filter the second bat_position**
+```{r,warning=FALSE,message=FALSE}
+MDG_P_2 <- bt4 %>% filter(bat_position == 2)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_MDG_P_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                           cum_runs + cum_doubles +cum_boundaries+ridge(cum_dotBalls), data = MDG_P_2)
+summary(cox_MDG_P_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_MDG_P_2 <- cox.zph(cox_MDG_P_2_new)
+test_MDG_P_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_MDG_P_2 <- ggadjustedcurves(cox_MDG_P_2_new , data = MDG_P_2 , size = 2,ggtheme = 
+                        theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) , 
+                        linetype = "dashed") +ggtitle("Survival curve for MD Gunathilaka for 
+                        the 2nd batting position") + theme(axis.title = element_text(size = 15),
+                        axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_MDG_P_2 <- ggforest(cox_MDG_P_2_new , data = MDG_P_2,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_MDG_P_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                           cum_runs + cum_doubles +cum_boundaries+ridge(cum_dotBalls), data = MDG_P_2)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+MDGSurvPlotPos <- ggarrange(cox_plot_MDG_P_1,cox_plot_MDG_P_2,ncol = 2)
+MDGSurvPlotPos
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"MDGSurvPlotPos.eps"),width = 10,height = 7,horizontal = FALSE)
+MDGSurvPlotPos
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+MDG_P_1 <- rename(MDG_P_1,cumulative_runs = cum_runs, cumulative_doubles = cum_doubles,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+MDG_P_2 <- rename(MDG_P_2,cumulative_runs = cum_runs, cumulative_doubles = cum_doubles,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+MDG_p1 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                           cumulative_runs + cumulative_doubles +cumulative_fours+ridge(cumulative_dot_balls), data = MDG_P_1)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of MD Gunathilaka for the 1st batting position")
+
+MDG_p2 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                           cumulative_runs + cumulative_doubles +cumulative_fours+ridge(cumulative_dot_balls), data = MDG_P_2)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of MD Gunathilaka for the 2nd batting position")
+
+MDGAalenPos <- ggarrange(MDG_p1,MDG_p2, nrow = 2)
+MDGAalenPos
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"MDGAalenPos.eps"),width = 10,height = 7,horizontal = FALSE)
+MDGAalenPos
+dev.off()
+```
+

@@ -1,0 +1,200 @@
+---
+title: "BKG_POS"
+author: "S_16_373"
+date: "5/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of BKG Mendis**
+```{r,warning=FALSE,message=FALSE}
+bt3 <- data_merge %>% filter(grepl('BKG Mendis' , Striker))
+```
+\
+\
+***1)Analysis for different batting position***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+bt3_ps <- bt3 %>% filter(bat_position == c(3,4))
+
+BKG_diff_pos <- survdiff(Surv(cum_balls , wicket) ~ bat_position, data = bt3_ps)
+BKG_diff_pos
+```
+The p value is greater than 0.05. Therefore we cannot see a significant difference between the batting positions 4 and 5.
+
+\
+\
+**batting position 3**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+BKG_P_3<- bt3 %>% filter(bat_position == 3)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_P_3_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = BKG_P_3)
+
+summary(cox_BKG_P_3_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_P_3 <- cox.zph(cox_BKG_P_3_new)
+test_BKG_P_3
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_BKG_P_3 <- ggadjustedcurves(cox_BKG_P_3_new , data = BKG_P_3 , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for BKG Mendis for the 7th
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_BKG_P_3 <- ggforest(cox_BKG_P_3_new , data = BKG_P_3,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_BKG_P_3
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = BKG_P_3)
+```
+\
+\
+**8th batting position**
+\
+\
+**Filter the second bat_position**
+```{r,warning=FALSE,message=FALSE}
+BKG_P_4 <- bt3 %>% filter(bat_position == 4)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_P_4_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = BKG_P_4)
+summary(cox_BKG_P_4_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_BKG_P_4 <- cox.zph(cox_BKG_P_4_new)
+test_BKG_P_4
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_BKG_P_4 <- ggadjustedcurves(cox_BKG_P_4_new , data = BKG_P_4 , size = 2,ggtheme = 
+                        theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) , 
+                        linetype = "dashed") +ggtitle("Survival curve for BKG Mendis for 
+                        the 8th batting position") + theme(axis.title = element_text(size = 15),
+                        axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_BKG_P_4 <- ggforest(cox_BKG_P_4_new , data = BKG_P_4,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_BKG_P_4
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                         cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = BKG_P_4)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+BKGSurvPlotPos <- ggarrange(cox_plot_BKG_P_3,cox_plot_BKG_P_4,ncol = 2)
+BKGSurvPlotPos
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"BKGSurvPlotPos.eps"),width = 10,height = 7,horizontal = FALSE)
+BKGSurvPlotPos
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+BKG_P_3 <- rename(BKG_P_3,cumulative_singles = cum_singles, cumulative_doubles = cum_doubles,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+BKG_P_4 <- rename(BKG_P_4,cumulative_singles = cum_singles, cumulative_doubles = cum_doubles,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+BKG_p3 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_singles+cumulative_doubles+cumulative_fours+ridge(cumulative_dot_balls), data = BKG_P_3)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of BKG Mendis 3rd batting position")
+
+BKG_p4 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                         cumulative_singles+cumulative_doubles+cumulative_fours+ridge(cumulative_dot_balls), data = BKG_P_4)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of BKG Mendis 4th batting position")
+
+BKGAalenPos <- ggarrange(BKG_p3,BKG_p4, nrow = 2)
+BKGAalenPos
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"BKGAalenPos.eps"),width = 10,height = 7,horizontal = FALSE)
+BKGAalenPos
+dev.off()
+```

@@ -1,0 +1,82 @@
+---
+title: "Mendis(BKG)"
+author: "S_16_373"
+date: "1/10/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Loading the library**
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+```
+\
+\
+**Read the data set**
+```{r, warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r, warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of LD Chandimal**
+```{r,warning=FALSE,message=FALSE}
+bt3 <- data_merge %>% filter(grepl('BKG Mendis' , Striker))
+head(bt3)
+```
+\
+**Head of specific columns**
+```{r,warning=FALSE,message=FALSE}
+bt3 %>% select(innings,cum_balls,wicket,cum_runs,cum_singles,cum_doubles,cum_boundaries,cum_dotBalls) %>% head()
+```
+\
+\
+**Cox model for single variables**
+\
+\
+**Cumulative runs**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_runs <- coxph(Surv(cum_balls , wicket) ~ cum_runs, data = bt3)
+summary(cox_BKG_runs)
+```
+\
+\
+**Cumulative singles**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_singles <- coxph(Surv(cum_balls , wicket) ~ cum_singles, data = bt3)
+summary(cox_BKG_singles)
+```
+\
+\
+**Cumulative doubles**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_doubles <- coxph(Surv(cum_balls , wicket) ~ cum_doubles, data = bt3)
+summary(cox_BKG_doubles)
+```
+\
+\
+**Cumulative boundaries**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_boundaries <- coxph(Surv(cum_balls , wicket) ~ cum_boundaries, data = bt3)
+summary(cox_BKG_boundaries)
+```
+\
+\
+**Cumulative dotballs**
+```{r,warning=FALSE,message=FALSE}
+cox_BKG_dotBalls <- coxph(Surv(cum_balls , wicket) ~ cum_dotBalls, data = bt3)
+summary(cox_BKG_dotBalls)
+```

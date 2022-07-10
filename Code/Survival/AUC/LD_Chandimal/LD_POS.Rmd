@@ -1,0 +1,258 @@
+---
+title: "LD_POS"
+author: "S_16_373"
+date: "5/8/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of LD Chandimal**
+```{r,warning=FALSE,message=FALSE}
+bt1 <- data_merge %>% filter(grepl('LD Chandimal' , Striker))
+```
+\
+\
+***1)Analysis for different batting position***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+bt1_ps <- bt1 %>% filter(bat_position == c(3,4,5))
+
+LD_diff_pos <- survdiff(Surv(cum_balls , wicket) ~ bat_position, data = bt1_ps)
+LD_diff_pos
+```
+The p value is less than 0.05. Therefore there is a significant difference between the batting positions 3,4 and 5.
+\
+\
+**batting position 3**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE}
+LD_P_3<- bt1 %>% filter(bat_position == 3)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_P_3_new <- coxph(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_doubles + cum_boundaries+ridge(cum_dotBalls), data = LD_P_3)
+
+summary(cox_LD_P_3_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_LD_P_3 <- cox.zph(cox_LD_P_3_new)
+test_LD_P_3
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_LD_P_3 <- ggadjustedcurves(cox_LD_P_3_new , data = LD_P_3 , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for LD Chandimal for the 3rd
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_LD_P_3 <- ggforest(cox_LD_P_3_new , data = LD_P_3,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_LD_P_3
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_doubles + cum_boundaries+ridge(cum_dotBalls), data = LD_P_3)
+```
+\
+\
+**batting position 4**
+\
+\
+**Filter the first bat_position**
+```{r,warning=FALSE,message=FALSE }
+LD_P_4<- bt1 %>% filter(bat_position == 4)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_P_4_new <- coxph(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_doubles + cum_boundaries+ridge(cum_dotBalls), data = LD_P_4)
+
+summary(cox_LD_P_4_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_LD_P_4 <- cox.zph(cox_LD_P_4_new)
+test_LD_P_4
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_LD_P_4 <- ggadjustedcurves(cox_LD_P_4_new , data = LD_P_4 , size = 2,
+                        ggtheme =theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) ,
+                        linetype = "dashed") +ggtitle("Survival curve for LD Chandimal for the 4th
+                        batting position") + theme(axis.title = element_text(size = 15),axis.text = 
+                        element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_LD_P_4 <- ggforest(cox_LD_P_4_new , data = LD_P_4,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_LD_P_4
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_doubles + cum_boundaries+ridge(cum_dotBalls), data = LD_P_4)
+```
+\
+\
+\
+\
+**5th batting position**
+\
+\
+**Filter the second bat_position**
+```{r,warning=FALSE,message=FALSE}
+LD_P_5 <- bt1 %>% filter(bat_position == 5)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+cox_LD_P_5_new <- coxph(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_doubles + cum_boundaries+ridge(cum_dotBalls), data = LD_P_5)
+summary(cox_LD_P_5_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_LD_P_5 <- cox.zph(cox_LD_P_5_new)
+test_LD_P_5
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_LD_P_5 <- ggadjustedcurves(cox_LD_P_5_new , data = LD_P_5 , size = 2,ggtheme = 
+                        theme_survminer()) + geom_hline(yintercept = c(0.25,0.5,0.75) , 
+                        linetype = "dashed") +ggtitle("Survival curve for LD Chandimal for 
+                        the 5th batting position") + theme(axis.title = element_text(size = 15),
+                        axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_LD_P_5 <- ggforest(cox_LD_P_5_new , data = LD_P_5,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_LD_P_5
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(cum_balls , wicket) ~ 
+                          cum_singles + cum_doubles + cum_boundaries+ridge(cum_dotBalls), data = LD_P_5)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+LDSurvPlotPos <- ggarrange(cox_plot_LD_P_3,cox_plot_LD_P_4,cox_plot_LD_P_5)
+LDSurvPlotPos
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"LDSurvPlotPos.eps"),width = 10,height = 7,horizontal = FALSE)
+LDSurvPlotPos
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(15,20)}
+LD_P_3 <- rename(LD_P_3,cumulative_singles = cum_singles, cumulative_doubles = cum_doubles,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+LD_P_4 <- rename(LD_P_4,cumulative_singles = cum_singles, cumulative_doubles = cum_doubles,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+LD_P_5 <- rename(LD_P_5,cumulative_singles = cum_singles, cumulative_doubles = cum_doubles,cumulative_fours = 
+                    cum_boundaries,cumulative_dot_balls=cum_dotBalls)
+
+LD_p3 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                          cumulative_singles + cumulative_doubles + cumulative_fours+ridge(cumulative_dot_balls), data = LD_P_3)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of LD Chandimal for 3rd batting position")
+
+LD_p4 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                          cumulative_singles + cumulative_doubles + cumulative_fours+ridge(cumulative_dot_balls), data = LD_P_4)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of LD Chandimal 4th batting position")
+
+LD_p5 <- autoplot(aareg(Surv(cum_balls , wicket) ~ 
+                          cumulative_singles + cumulative_doubles + cumulative_fours+ridge(cumulative_dot_balls), data = LD_P_5)) +
+  theme(legend.position = "none") + ggtitle("Aalen plot of LD Chandimal 5th batting position")
+
+LDAalenPos <- ggarrange(LD_p3,LD_p4,LD_p5, nrow = 3)
+LDAalenPos
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"LDAalenPos.eps"),width = 10,height = 20,horizontal = FALSE)
+LDAalenPos
+dev.off()
+```

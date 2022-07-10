@@ -1,0 +1,283 @@
+---
+title: "AUC_NLTC_INN"
+author: "S_16_373"
+date: "3/29/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of NLTC Perera**
+```{r,warning=FALSE,message=FALSE}
+bt12 <- data_merge %>% filter(grepl('NLTC Perera' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+NLTC_1 <- bt12 %>% filter(innings == 1)
+```
+\
+\
+**Cox model for first innings**
+```{r,warning=FALSE,message=FALSE}
+cox_NLTC_1 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = NLTC_1)
+summary(cox_NLTC_1)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_NLTC_1 <- stepAIC(cox_NLTC_1)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_NLTC_1_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs + cum_singles+ ridge(cum_dotBalls), data = NLTC_1)
+summary(cox_NLTC_1_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_1 <- cox.zph(cox_NLTC_1_new)
+test_NLTC_1
+```
+\
+\
+\
+\
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+NLTC_1_cut <- survSplit(NLTC_1 , cut = 14 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+NLTC_1_cut$hv1 <- NLTC_1_cut$cum_runs * (NLTC_1_cut$start < 14)
+NLTC_1_cut$hv2 <- NLTC_1_cut$cum_runs * (NLTC_1_cut$start >= 14)
+
+
+cox_NLTC_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                     hv1 + hv2 +cum_singles+ridge(cum_dotBalls) + cluster (id) , data = NLTC_1_cut)
+summary(cox_NLTC_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_1_heav <- cox.zph(cox_NLTC_1_heav)
+test_NLTC_1_heav
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_NLTC_1 <- ggadjustedcurves(cox_NLTC_1_heav , data = NLTC_1_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +xlim(0,80) +
+                    ggtitle("Survival curve for NLTC Perera for the first innings") + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+
+cox_plot_NLTC_1
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_NLTC_1 <- ggforest(cox_NLTC_1_heav , data = NLTC_1_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_NLTC_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+      hv1 + hv2 +cum_singles+ridge(cum_dotBalls) + cluster (id) , data = NLTC_1_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_NLTC_1 <- unique(NLTC_1[c("Match_Number","winning_status")])
+tot_matches_NLTC_1 <- nrow(match_status_NLTC_1)
+win_matches_NLTC_1 <- sum(match_status_NLTC_1$winning_status==1)
+
+win_percent_NLTC_1 <- (win_matches_NLTC_1/tot_matches_NLTC_1)*100
+
+win_percent_NLTC_1
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_NLTC_1 <- data_merge %>% filter(Match_Number %in% unique(NLTC_1$Match_Number))
+tot_runs_NLTC_1 <- match_played_NLTC_1 %>% summarise(sum_runs = sum(tot_runs))
+NLTC_runs_1 <- NLTC_1 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_NLTC_1 <- (NLTC_runs_1/tot_runs_NLTC_1)*100
+runs_contrib_percent_NLTC_1
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+NLTC_2 <- bt12 %>% filter(innings == 2)
+```
+\
+\
+**Cox model for second innings**
+```{r,warning=FALSE,message=FALSE}
+cox_NLTC_2 <- coxph(Surv(cum_balls , wicket) ~ 
+                     cum_runs+cum_singles+cum_doubles+cum_boundaries+ridge(cum_dotBalls), data = NLTC_2)
+summary(cox_NLTC_2)
+```
+\
+\
+**Finding the best model using AIC**
+```{r,warning=FALSE,message=FALSE}
+model_NLTC_2 <- stepAIC(cox_NLTC_2)
+```
+\
+\
+**Best Model**
+```{r,warning=FALSE,message=FALSE}
+cox_NLTC_2_new <- coxph(Surv(cum_balls , wicket) ~ 
+                         cum_runs + cum_singles + cum_doubles+ ridge(cum_dotBalls), data = NLTC_2)
+summary(cox_NLTC_2_new)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_2 <- cox.zph(cox_NLTC_2_new)
+test_NLTC_2
+```
+\
+\
+**Extended cox model**
+```{r,warning=FALSE,message=FALSE}
+NLTC_2_cut <- survSplit(NLTC_2 , cut = 23 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+NLTC_2_cut$hv1 <- NLTC_2_cut$cum_singles * (NLTC_2_cut$start < 23)
+NLTC_2_cut$hv2 <- NLTC_2_cut$cum_singles * (NLTC_2_cut$start >= 23)
+
+
+cox_NLTC_2_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                    cum_runs+ hv1 + hv2 +cum_doubles+ridge(cum_dotBalls) + cluster (id) , data = NLTC_2_cut)
+summary(cox_NLTC_2_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_NLTC_2_heav <- cox.zph(cox_NLTC_2_heav)
+test_NLTC_2_heav
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_NLTC_2 <- ggadjustedcurves(cox_NLTC_2_heav , data = NLTC_2_cut , size = 2,ggtheme = theme_survminer()) + 
+                  geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed")  +
+                    ggtitle("Survival curve for NLTC Perera for the second innings") +
+                    theme(text = element_text(size = 20))
+
+cox_plot_NLTC_2
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE}
+coef_plot_NLTC_2 <- ggforest(cox_NLTC_2_heav , data = NLTC_2_cut,fontsize = 1.2)
+coef_plot_NLTC_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                    cum_runs+ hv1 + hv2 +cum_doubles+ridge(cum_dotBalls) + cluster (id) , data = NLTC_2_cut)
+```
+\
+\
+**percentage of matches won when the player is in the specific match**
+```{r,warning=FALSE,message=FALSE}
+match_status_NLTC_2 <- unique(NLTC_2[c("Match_Number","winning_status")])
+tot_matches_NLTC_2 <- nrow(match_status_NLTC_2)
+win_matches_NLTC_2 <- sum(match_status_NLTC_2$winning_status==1)
+
+win_percent_NLTC_2 <- (win_matches_NLTC_2/tot_matches_NLTC_2)*100
+
+win_percent_NLTC_2
+```
+\
+\
+**Runs contributed**
+```{r,warning=FALSE,message=FALSE}
+match_played_NLTC_2 <- data_merge %>% filter(Match_Number %in% unique(NLTC_2$Match_Number))
+tot_runs_NLTC_2 <- match_played_NLTC_2 %>% summarise(sum_runs = sum(tot_runs))
+NLTC_runs_2 <- NLTC_2 %>%  summarise(sum_runs = sum(tot_runs))
+
+runs_contrib_percent_NLTC_2 <- (NLTC_runs_2/tot_runs_NLTC_2)*100
+runs_contrib_percent_NLTC_2
+```
+\
+\
+\
+***Compare different innings***
+\
+\
+**Create the data frame**
+```{r,warning=FALSE,message=FALSE}
+PlayerName_NLTC <- "NLTC Perera"
+Innings <- c(1,2)
+Survival_prob_NLTC <- c(0.8985079,0.8565961)
+winning_percent_NLTC <- c(35.29412,10.52632)
+runs_contrib_percent_NLTC <- c(7.105677		,15.63102)
+
+comp_innings_NLTC <- data.frame(PlayerName_NLTC,Innings,Survival_prob_NLTC,runs_contrib_percent_NLTC,winning_percent_NLTC)
+names(comp_innings_NLTC) <- c("PlayerName","Innings","Survival_prob","runs_contrib_percent","winning_percent")
+comp_innings_NLTC
+```
+\
+\

@@ -1,0 +1,220 @@
+---
+title: "WUT_INN"
+author: "S_16_373"
+date: "4/1/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Load the libraries**
+```{r,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(survminer)
+library(rms)
+library(dynpred)
+library(MASS)
+library(CPE)
+library(scatterplot3d)
+library(plotly)
+```
+\
+\
+**Read the data sets**
+```{r,warning=FALSE,message=FALSE}
+Home <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Home/Home.csv")
+Overseas <- read.csv("~/Research/Research---ST426/Data/NewData/Merge/Overseas/Overseas.csv")
+```
+\
+\
+**Merge two data sets**
+```{r,warning=FALSE,message=FALSE}
+data_merge <- rbind(Home , Overseas)
+```
+\
+\
+**Filter the data of WU Tharanga**
+```{r,warning=FALSE,message=FALSE}
+bt15 <- data_merge %>% filter(grepl('WU Tharanga' , Striker))
+```
+\
+\
+***1)Analysis for two different innings***
+\
+\
+```{r,message=FALSE,warning=FALSE}
+WUT_diff_inn <- survdiff(Surv(cum_balls , wicket) ~ innings, data = bt15)
+WUT_diff_inn
+```
+The p value is less than 0.05. Therefore there is a significant difference between the innings.
+
+\
+\
+**First innings**
+\
+\
+**Filter the first innings**
+```{r,warning=FALSE,message=FALSE}
+WUT_1 <- bt15 %>% filter(innings == 1)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+WUT_1_cut <- survSplit(WUT_1 , cut = 50 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+WUT_1_cut$hv1 <- WUT_1_cut$cum_runs  * (WUT_1_cut$start < 50)
+WUT_1_cut$hv2 <- WUT_1_cut$cum_runs  * (WUT_1_cut$start >= 50)
+
+WUT_1_cut$hv3 <- WUT_1_cut$cum_singles   * (WUT_1_cut$start < 50)
+WUT_1_cut$hv4 <- WUT_1_cut$cum_singles   * (WUT_1_cut$start >= 50)
+
+cox_WUT_1_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +hv3 +hv4 + cum_dotBalls + cluster (id) , data = WUT_1_cut)
+
+summary(cox_WUT_1_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_WUT_1 <- cox.zph(cox_WUT_1_heav)
+test_WUT_1
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_WUT_1 <- ggadjustedcurves(cox_WUT_1_heav , data = WUT_1_cut , size = 2,
+                      ggtheme = theme_survminer()) + 
+                      geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                      ggtitle("Survival curve for WU Tharanga for the first innings") + 
+                      theme(axis.title = element_text(size = 15),
+                            axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_WUT_1 <- ggforest(cox_WUT_1_heav , data = WUT_1_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_WUT_1
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +hv3 +hv4 + cum_dotBalls + cluster (id) , data = WUT_1_cut)
+```
+\
+\
+**Second Innings**
+\
+\
+**Filter the second innings**
+```{r,warning=FALSE,message=FALSE}
+WUT_2 <- bt15 %>% filter(innings == 2)
+```
+\
+\
+**Cox model**
+```{r,warning=FALSE,message=FALSE}
+WUT_2_cut <- survSplit(WUT_2 , cut = 50 , end = "cum_balls" , event = "wicket" , start = "start" , id = "id")
+
+WUT_2_cut$hv1 <- WUT_2_cut$cum_runs  * (WUT_2_cut$start < 50)
+WUT_2_cut$hv2 <- WUT_2_cut$cum_runs  * (WUT_2_cut$start >= 50)
+
+WUT_2_cut$hv3 <- WUT_2_cut$cum_singles   * (WUT_2_cut$start < 50)
+WUT_2_cut$hv4 <- WUT_2_cut$cum_singles   * (WUT_2_cut$start >= 50)
+
+cox_WUT_2_heav <- coxph(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +hv3 +hv4 + ridge(cum_dotBalls) + cluster (id) , data = WUT_2_cut)
+
+summary(cox_WUT_2_heav)
+```
+\
+\
+**Test pH assumptions**
+```{r,warning=FALSE,message=FALSE}
+test_WUT_2 <- cox.zph(cox_WUT_2_heav)
+test_WUT_2
+```
+\
+\
+**Plot the survival curve**
+```{r,warning=FALSE,message=FALSE}
+cox_plot_WUT_2 <- ggadjustedcurves(cox_WUT_2_heav , data = WUT_2_cut , size = 2,
+                        ggtheme = theme_survminer()) + 
+                        geom_hline(yintercept = c(0.25,0.5,0.75) , linetype = "dashed") +
+                        ggtitle("Survival curve for WU Tharanga for the second innings") + 
+                        theme(axis.title = element_text(size = 15),
+                              axis.text = element_text(size = 14))
+
+```
+\
+\
+**coeffient plot**
+```{r,message=FALSE,warning=FALSE,fig.dim=c(10,6)}
+coef_plot_WUT_2 <- ggforest(cox_WUT_2_heav , data = WUT_2_cut,fontsize = 1.2) + 
+  theme(axis.title = element_text(size = 15),axis.text = element_text(size = 14))
+coef_plot_WUT_2
+```
+\
+\
+**Area under the curve**
+```{r,warning=FALSE,message=FALSE}
+AUC(Surv(start,cum_balls , wicket) ~ 
+                          hv1 + hv2 +hv3 +hv4 + ridge(cum_dotBalls) + cluster (id) , data = WUT_2_cut)
+```
+\
+\
+**Survival curve**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,6)}
+WUTSurvPlotInn <- ggarrange(cox_plot_WUT_1,cox_plot_WUT_2,ncol = 2)
+WUTSurvPlotInn
+```
+\
+\
+**Upload to texStudio**
+```{r,results='hide',message=FALSE,warning=FALSE}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"WUTSurvPlotInn.eps"),width = 10,height = 7,horizontal = FALSE)
+WUTSurvPlotInn
+dev.off()
+```
+\
+\
+**Aalen model**
+```{r,warning=FALSE,message=FALSE,fig.dim=c(10,7)}
+WUT_1_cut <- rename(WUT_1_cut,cumulative_runs_lt50 = hv1, cumulative_runs_ge50 = hv2,cumulative_singles_lt50 = hv3, 
+                     cumulative_singles_ge50 = hv4 ,cumulative_dot_balls=cum_dotBalls)
+WUT_2_cut <- rename(WUT_2_cut,cumulative_runs_lt50 = hv1, cumulative_runs_ge50 = hv2,cumulative_singles_lt50 = hv3, 
+                     cumulative_singles_ge50 = hv4 ,cumulative_dot_balls=cum_dotBalls)
+
+WUT_p1 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                          cumulative_runs_lt50 + cumulative_runs_ge50 +cumulative_singles_lt50 +cumulative_singles_ge50 + 
+                           ridge(cumulative_dot_balls) + cluster (id) , data = WUT_1_cut)) + theme(legend.position = "none") + 
+  ggtitle("Aalen plot of WU Tharanga for the first innings") 
+
+WUT_p2 <- autoplot(aareg(Surv(start,cum_balls , wicket) ~ 
+                          cumulative_runs_lt50 + cumulative_runs_ge50 +cumulative_singles_lt50 +cumulative_singles_ge50 + 
+                           ridge(cumulative_dot_balls) + cluster (id) , data = WUT_2_cut)) + theme(legend.position = "none") + 
+  ggtitle("Aalen plot of WU Tharanga for the second innings") 
+
+WUTAalenInn <- ggarrange(WUT_p1,WUT_p2, nrow = 2)
+WUTAalenInn
+```
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+filepath <- "~/Research/Thesis_S16373/images/"
+postscript(file = paste0(filepath,"WUTAalenInn.eps"),width = 10,height = 7,horizontal = FALSE)
+WUTAalenInn
+dev.off()
+```
+
