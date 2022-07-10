@@ -1,2 +1,2 @@
 # Research_Code
-This contains the code and the data of the research.
+This contains the code of the research.
